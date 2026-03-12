@@ -8,6 +8,7 @@ import { makeInitCommand } from './commands/init.js';
 import { makeMailCommand } from './commands/mail.js';
 import { makeRolesCommand, makeWorkflowsCommand } from './commands/roles.js';
 import { makeRunCommand } from './commands/run.js';
+import { makeServeCommand } from './commands/serve.js';
 import { makeWorkCommand } from './commands/work.js';
 
 const program = new Command();
@@ -18,6 +19,7 @@ program.addCommand(makeInitCommand());
 program.addCommand(makeHealthCommand());
 program.addCommand(makeDoctorCommand());
 program.addCommand(makeRunCommand());
+program.addCommand(makeServeCommand());
 program.addCommand(makeWorkCommand());
 program.addCommand(makeAgentsCommand());
 program.addCommand(makeMailCommand());
