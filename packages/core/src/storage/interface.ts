@@ -128,6 +128,7 @@ export interface SisuStorage {
   // Execution Plans
   createPlan(input: CreatePlanInput): Promise<ExecutionPlan>;
   getPlan(id: string): Promise<ExecutionPlan | null>;
+  getPlanByWorkItem(workItemId: string): Promise<ExecutionPlan | null>;
   updatePlanStep(planId: string, stepId: string, update: StepUpdate): Promise<ExecutionPlan>;
 
   // Mail

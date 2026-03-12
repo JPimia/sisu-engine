@@ -480,6 +480,21 @@ export class SqliteStorage implements SisuStorage {
     return Promise.resolve(rowToPlan(planRow, stepRows));
   }
 
+  getPlanByWorkItem(workItemId: string): Promise<ExecutionPlan | null> {
+    const planRow = this.db
+      .prepare(
+        'SELECT * FROM execution_plans WHERE work_item_id = ? ORDER BY created_at DESC LIMIT 1',
+      )
+      .get(workItemId) as PlanRow | undefined;
+    if (!planRow) return Promise.resolve(null);
+
+    const stepRows = this.db
+      .prepare('SELECT * FROM plan_steps WHERE plan_id = ?')
+      .all(planRow.id) as PlanStepRow[];
+
+    return Promise.resolve(rowToPlan(planRow, stepRows));
+  }
+
   updatePlanStep(planId: string, stepId: string, update: StepUpdate): Promise<ExecutionPlan> {
     const planRow = this.db.prepare('SELECT * FROM execution_plans WHERE id = ?').get(planId) as
       | PlanRow
