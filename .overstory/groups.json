@@ -12,5 +12,16 @@
 		"status": "completed",
 		"createdAt": "2026-03-12T17:33:47.594Z",
 		"completedAt": "2026-03-12T18:06:32.042Z"
+	},
+	{
+		"id": "group-da7d3bbb",
+		"name": "phase-2-engine",
+		"memberIssueIds": [
+			"sisu-aaaa",
+			"sisu-98c7"
+		],
+		"status": "active",
+		"createdAt": "2026-03-12T18:21:51.397Z",
+		"completedAt": null
 	}
 ]
