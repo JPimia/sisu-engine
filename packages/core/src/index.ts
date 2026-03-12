@@ -22,4 +22,5 @@ export type {
   UpdateWorkItemInput,
   WorkItemFilter,
 } from './storage/interface.js';
+export { PostgresStorage } from './storage/postgres.js';
 export { SqliteStorage } from './storage/sqlite.js';
