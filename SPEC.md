@@ -236,6 +236,69 @@ interface RoutingHint {
   sampleSize: number;
 }
 
+Sequence Diagram (Base Architecture)
+
+```mermaid
+sequenceDiagram
+    participant U as User / Operator
+    participant GP as Global Planner
+    participant RMI as Repo Memory Index
+    participant TBM as Token Budget Manager
+    participant CF as Conflict Forecaster
+    participant CR as Contract Registry
+    participant RC as Repo Coordinator
+    participant EP as Execution Pod
+    participant EL as Event Log
+    participant MS as Merge Service
+    participant RR as Remote Repo
+
+    Note over U,RR: Solid arrows = command / task flow • Dashed arrows = results / receipts / state updates
+
+    Note over U,GP: Phase 1: Intelligence Gathering
+    U->>GP: 1. Submit objective
+    GP->>RMI: 2. Load affected modules / repo graph context
+    GP->>TBM: 3. Request budget policy
+    GP->>CF: 4. Predict scope overlap / merge risk
+    GP->>CR: 5. Check cross-repo contract impact
+
+    Note over GP,RC: Phase 2: Planning & Dispatch
+    GP->>RC: 6. Create task state and execution plan
+    RC-->>GP: 7. Dispatch repo-local workstream (ack)
+    GP->>EL: 8. Request scoped context pack
+    EL-->>RC: 9. Context delta pack
+
+    Note over RC,EP: Phase 3: Execution
+    RC->>EP: 10. Launch best-fit execution pod
+
+    alt Tiny isolated task
+        EP->>EP: 11. Direct builder execution
+    else Ambiguous task
+        EP->>EP: 12. Scout + builder execution
+    else High-risk task
+        EP->>EP: 13. Builder + reviewer execution
+    else Large task
+        EP->>EP: 14. Scout + builder + reviewer execution
+    end
+
+    EP-->>RC: 15. Proof bundle + completion status
+    EP-->>EL: 16. State updates / checkpoints
+
+    Note over RC,CF: Phase 4: Conflict Resolution
+    RC->>CF: 17. Final conflict precheck
+    CF-->>RC: 18. Conflict score
+    RC-->>GP: 19. ready_to_merge
+
+    Note over GP,RR: Phase 5: Merge & Delivery
+    GP->>MS: 20. Submit to merge service
+    MS->>MS: 21. Verify interface compatibility
+    MS->>CF: 22. Check merge queue / conflict risk
+    MS-->>EL: 23. Record merge state
+    MS->>RR: 24. Canary checks + merge
+    RR->>RR: 25. Push merged changes to remote
+    RR-->>MS: 26. Delivery result
+    MS-->>EL: 27. Outcome history
+```
+
 Execution Flow (27 Steps)
 This is the canonical sequence for a SISU objective from submission to merge:
 
@@ -382,6 +445,94 @@ interface AgentReceipt {
   filesChanged: string[];
   timestamp: string;
 }
+
+Sequence Diagram (SCBS-Integrated Architecture)
+
+```mermaid
+sequenceDiagram
+    participant U as User / Operator
+    participant GP as Global Planner
+    participant TBP as Task Bundle Planner
+    participant CV as Context Views
+    participant CG as Claim Graph
+    participant TE as Truth Extraction
+    participant IE as Invalidation Engine
+    participant TBM as Token Budget Manager
+    participant CF as Conflict Forecaster
+    participant CR as Contract Registry
+    participant RC as Repo Coordinator
+    participant EP as Execution Pod
+    participant EL as Event Log
+    participant RI as Receipt Ingestion
+    participant MS as Merge Service
+    participant RR as Remote Repo
+
+    Note over U,RR: Solid arrows = command / task flow • Dashed arrows = results / receipts / state updates
+
+    Note over U,TE: Phase 1: SCBS Bundle Assembly
+    U->>GP: 1. Submit objective
+    GP->>TBP: 2. Request planning bundle
+    TBP->>CV: 3. Request task-specific context view
+    CV->>CG: 4. Resolve anchored claims
+    CG->>TE: 5. Pull repository-backed facts
+    TE-->>CG: 6. Trusted facts
+    CG-->>CV: 7. Anchored claims
+    CV-->>TBP: 8. Scoped planning view
+    TBP-->>GP: 9. Compiled planning bundle
+
+    Note over GP,CR: Phase 2: Intelligence Gathering
+    GP->>TBM: 10. Request budget policy
+    GP->>CF: 11. Predict conflict risk
+    GP->>CR: 12. Check contract impact
+
+    Note over GP,RC: Phase 3: Planning & Dispatch
+    GP->>RC: 13. Create task state and execution plan
+    RC-->>GP: 14. Dispatch repo-local workstream (ack)
+    RC->>TBP: 15. Request execution bundle
+    TBP-->>RC: 16. Compiled execution bundle
+
+    Note over RC,RI: Phase 4: Execution
+    RC->>EP: 17. Launch best-fit execution pod
+    RC->>EP: 18. Provide compiled task bundle
+
+    alt Tiny isolated task
+        EP->>EP: 19. Direct builder execution
+    else Ambiguous task
+        EP->>EP: 20. Scout + builder execution
+    else High-risk task
+        EP->>EP: 21. Builder + reviewer execution
+    else Large task
+        EP->>EP: 22. Scout + builder + reviewer execution
+    end
+
+    EP-->>RC: 23. Proof bundle + completion status
+    EP-->>EL: 24. State updates / checkpoints
+    EP->>RI: 25. Agent receipt
+    RI->>CG: 26. Validated provisional updates
+
+    Note over RC,CF: Phase 5: Conflict Resolution
+    RC->>CF: 27. Final conflict precheck
+    CF-->>RC: 28. Conflict score
+    RC-->>GP: 29. ready_to_merge
+
+    Note over GP,RR: Phase 6: Merge & Delivery
+    GP->>MS: 30. Submit to merge service
+    MS->>MS: 31. Verify interface compatibility
+    MS->>CF: 32. Check merge queue / conflict risk
+    MS-->>EL: 33. Record merge state
+    MS->>RR: 34. Canary checks + merge
+    RR->>RR: 35. Push merged changes to remote
+    RR-->>MS: 36. Delivery result
+
+    Note over RR,IE: Phase 7: Invalidation Cascade (parallel on repo changes)
+    par Repository changes
+        RR->>TE: 37. Change events
+        TE->>TE: 38. Refresh extraction
+        IE->>CG: 39. Expire stale claims
+        IE->>CV: 40. Expire stale views
+        IE->>TBP: 41. Expire stale bundles
+    end
+```
 
 SCBS-Integrated Execution Flow (41 Steps)
 This is the canonical sequence when SCBS is active. Steps 1-9 replace the Repo Memory Index query with a full SCBS compilation pipeline.
