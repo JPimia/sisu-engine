@@ -5,6 +5,7 @@ domains:
   - architecture
   - core
   - orchestration
+  - runtime
 governance:
   max_entries: 100
   warn_entries: 150
