@@ -1,0 +1,9 @@
+Read .overstory/specs/phase-1-protocol-and-storage.md carefully. This is your ONLY task right now. Do NOT read phase-2 or phase-3 specs yet. Do NOT work on CLI, API server, dashboard, or runtime adapters.
+
+ONLY build these three packages:
+
+1. @sisu/protocol - All TypeScript types with Zod schemas, ID generation with ULID, protocol version constant, barrel exports
+2. @sisu/core - Storage interface, SQLite implementation with better-sqlite3, role registry with spawn hierarchy validation, work item lifecycle state machine
+3. templates-default - 9 role markdown templates and 5 workflow YAML templates
+
+Create seeds from the spec, decompose into worker tasks, then start slinging builders. Every package needs package.json, tsconfig.json, and tests. 90 percent coverage required. pnpm lint, typecheck, and test must all pass. Push to origin/main when Phase 1 is complete. Do NOT start Phase 2 until Phase 1 is fully green.

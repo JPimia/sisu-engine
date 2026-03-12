@@ -30,6 +30,7 @@ Runtimes are pluggable. OpenClaw is the default runtime adapter, but the engine 
 Horizontal scale comes first. SISU should run as a stateless API/service layer backed by durable storage, queue semantics, and idempotent event handling.
 Schema evolution must be additive by default. Forward compatibility matters. Unknown fields should survive round-trips through metadata bags and versioned envelopes.
 Mission Control is the control surface, SISU is the execution brain. The product owns UX and domain presentation. SISU owns orchestration logic and execution state.
+Stateless coordinator turns, not long-running sessions. The coordinator must NEVER be a long-running session that accumulates context until the window fills and quality degrades. Each coordinator decision is a fresh invocation with a curated context briefing assembled from storage. The coordinator reads, decides, writes back, and dies. Storage is the memory, not the context window. This is the bridge pattern to SCBS — when SCBS is ready, the briefing assembly becomes a real bundle request.
 On-Disk Format
 SISU is a standalone repository with a package boundary, API server, SDK, and integration adapter(s).
 
@@ -350,6 +351,42 @@ supportedCapabilities: string[];
 webhookUrl?: string;
 metadata?: Record<string, unknown>;
 }
+Coordinator Briefing
+The coordinator is a stateless AI brain. Each decision (dispatch, rework, escalation, decomposition) is a fresh LLM invocation with a curated context pack — NOT a long-running session that accumulates garbage.
+
+interface CoordinatorBriefing {
+// Decision type
+decision: "dispatch" | "decompose" | "rework" | "escalate" | "review_result" | "stall_check";
+
+// The thing we're deciding about (full detail)
+subject: WorkItem;
+
+// Compact summaries of related state — NOT full objects
+activeItems: { id: string; title: string; status: WorkItemStatus; assignee?: string; kind: string }[];
+blockedBy: { itemId: string; blockerIds: string[] }[];
+
+// Only recent, relevant mail (last N for this work item or agent)
+recentMail: AgentMail[];
+
+// Available resources
+availableRoles: RoleDefinition[];
+availableWorkflows: WorkflowTemplate[];
+
+// Execution state for this work item (if plan exists)
+currentPlan?: ExecutionPlan;
+
+// Token budget for this briefing
+tokenBudget: number;
+}
+
+Rules:
+- Briefing is assembled by a context compiler function that queries storage
+- Completed work items appear as one-line summaries, not full objects
+- Mail is filtered to the last 5-10 relevant messages, not the full history
+- The coordinator session starts, receives the briefing, makes ONE decision, persists it, and ends
+- Storage is the memory. The context window is temporary. Never rely on accumulated session state.
+- When SCBS is integrated, this briefing assembly becomes a proper SCBS bundle request
+
 ID Generation
 Work items: wrk_{ulid}
 Execution plans: plan_{ulid}
