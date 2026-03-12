@@ -66,11 +66,10 @@ describe('CodexRuntime', () => {
       const config = makeConfig({ taskDescription: 'Build the feature' });
       await runtime.spawn(config);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        'codex',
-        ['exec', '--full-auto', '--json', 'Build the feature'],
-        { cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'] },
-      );
+      expect(mockSpawn).toHaveBeenCalledWith('codex', ['--full-auto', 'Build the feature'], {
+        cwd: '/tmp',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
     });
 
     it('closes stdin immediately', async () => {

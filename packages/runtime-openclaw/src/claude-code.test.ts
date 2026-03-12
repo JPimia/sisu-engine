@@ -68,19 +68,15 @@ describe('ClaudeCodeRuntime', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'claude',
-        ['--model', 'claude-sonnet-4-6', '--dangerously-skip-permissions'],
+        ['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions', 'Do the thing'],
         { cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'] },
       );
     });
 
-    it('writes systemPrompt and taskDescription to stdin', async () => {
-      const config = makeConfig({
-        systemPrompt: 'SYS',
-        taskDescription: 'TASK',
-      });
+    it('closes stdin immediately', async () => {
+      const config = makeConfig();
       await runtime.spawn(config);
 
-      expect(mockProcess.stdin?.write).toHaveBeenCalledWith('SYS\n\nTASK');
       expect(mockProcess.stdin?.end).toHaveBeenCalled();
     });
 
