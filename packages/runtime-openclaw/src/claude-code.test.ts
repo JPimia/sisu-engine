@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events';
-import type { RoleDefinition } from '@sisu/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ClaudeCodeRuntime } from './claude-code.js';
 import type { SpawnConfig } from './types.js';
@@ -13,22 +12,17 @@ vi.mock('node:child_process', () => {
 
 const { spawn: mockSpawn, spawnSync: mockSpawnSync } = await import('node:child_process');
 
-function makeRole(): RoleDefinition {
-  return {
-    id: 'builder',
-    name: 'Builder',
-    description: 'Builds things',
-    modelTier: 'execution',
-    canSpawn: [],
-    access: {},
-    maxConcurrency: -1,
-  };
-}
+type MockProcess = EventEmitter & {
+  stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> } | null;
+  pid: number;
+  kill: ReturnType<typeof vi.fn>;
+};
 
 function makeConfig(overrides: Partial<SpawnConfig> = {}): SpawnConfig {
   return {
     runId: 'run_test001',
-    role: makeRole(),
+    role: 'builder',
+    planId: 'plan_test001',
     model: 'claude-sonnet-4-6',
     workItemId: 'wrk_test001',
     taskDescription: 'Do the thing',
@@ -38,20 +32,18 @@ function makeConfig(overrides: Partial<SpawnConfig> = {}): SpawnConfig {
   };
 }
 
-function makeMockProcess() {
-  const proc = new EventEmitter() as ReturnType<typeof mockSpawn>;
-  const stdinMock = { write: vi.fn(), end: vi.fn() };
-  // @ts-expect-error - mock partial ChildProcess
-  proc.stdin = stdinMock;
-  // @ts-expect-error - mock partial ChildProcess
-  proc.pid = 12345;
-  proc.kill = vi.fn();
-  return proc;
+function makeMockProcess(): MockProcess {
+  const proc = new EventEmitter();
+  const mockProc = proc as unknown as MockProcess;
+  mockProc.stdin = { write: vi.fn(), end: vi.fn() };
+  mockProc.pid = 12345;
+  mockProc.kill = vi.fn();
+  return mockProc;
 }
 
 describe('ClaudeCodeRuntime', () => {
   let runtime: ClaudeCodeRuntime;
-  let mockProcess: ReturnType<typeof makeMockProcess>;
+  let mockProcess: MockProcess;
 
   beforeEach(() => {
     runtime = new ClaudeCodeRuntime();
@@ -76,19 +68,15 @@ describe('ClaudeCodeRuntime', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'claude',
-        ['--print', '--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions'],
+        ['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions', 'Do the thing'],
         { cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'] },
       );
     });
 
-    it('writes systemPrompt and taskDescription to stdin', async () => {
-      const config = makeConfig({
-        systemPrompt: 'SYS',
-        taskDescription: 'TASK',
-      });
+    it('closes stdin immediately', async () => {
+      const config = makeConfig();
       await runtime.spawn(config);
 
-      expect(mockProcess.stdin?.write).toHaveBeenCalledWith('SYS\n\nTASK');
       expect(mockProcess.stdin?.end).toHaveBeenCalled();
     });
 
@@ -129,14 +117,14 @@ describe('ClaudeCodeRuntime', () => {
       expect(status.status).toBe('failed');
     });
 
-    it('keeps active status on zero exit', async () => {
+    it('transitions to completed on zero exit', async () => {
       const config = makeConfig({ runId: 'run_exit_ok' });
       await runtime.spawn(config);
       mockProcess.emit('spawn');
       mockProcess.emit('exit', 0);
 
       const status = await runtime.heartbeat('run_exit_ok');
-      expect(status.status).toBe('active');
+      expect(status.status).toBe('completed');
     });
   });
 

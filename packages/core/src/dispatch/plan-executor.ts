@@ -21,7 +21,7 @@ export interface SpawnConfig {
 export interface AgentHandle {
   runId: string;
   pid?: number | undefined;
-  status: 'spawning' | 'active' | 'failed';
+  status: 'spawning' | 'active' | 'completed' | 'failed';
 }
 
 export interface AgentRuntime {

@@ -1,25 +1,13 @@
-import type { RoleDefinition } from '@sisu/protocol';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentRuntime } from './interface.js';
 import { RuntimeManager } from './manager.js';
 import type { AgentHandle, LeaseStatus, SpawnConfig } from './types.js';
 
-function makeRole(): RoleDefinition {
-  return {
-    id: 'builder',
-    name: 'Builder',
-    description: 'Builds things',
-    modelTier: 'execution',
-    canSpawn: [],
-    access: {},
-    maxConcurrency: -1,
-  };
-}
-
 function makeConfig(overrides: Partial<SpawnConfig> = {}): SpawnConfig {
   return {
     runId: 'run_mgr001',
-    role: makeRole(),
+    role: 'builder',
+    planId: 'plan_mgr001',
     model: 'claude-sonnet-4-6',
     workItemId: 'wrk_mgr001',
     taskDescription: 'Do the thing',

@@ -1,8 +1,7 @@
-import type { RoleDefinition } from '@sisu/protocol';
-
 export interface SpawnConfig {
   runId: string;
-  role: RoleDefinition;
+  role: string;
+  planId: string;
   model: string;
   workItemId: string;
   taskDescription: string;
@@ -11,7 +10,7 @@ export interface SpawnConfig {
   files?: string[];
 }
 
-export type AgentStatus = 'spawning' | 'active' | 'failed';
+export type AgentStatus = 'spawning' | 'active' | 'completed' | 'failed';
 
 export interface AgentHandle {
   runId: string;
