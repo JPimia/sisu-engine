@@ -1,0 +1,27 @@
+{
+  "name": "@sisu/cli-generated",
+  "version": "1.0.0",
+  "description": "Auto-generated CLI for the SISU API (generated from openapi/sisu-v1.yaml)",
+  "type": "module",
+  "bin": {
+    "sisu-api": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "lint": "biome check src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate": "node scripts/generate.js"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.x",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  }
+}
