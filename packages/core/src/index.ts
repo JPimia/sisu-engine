@@ -1,9 +1,12 @@
+export * from './dispatch/index.js';
 export {
   isTerminal,
   isValidTransition,
   transition,
   validNextStatuses,
 } from './lifecycle/work-item.js';
+export * from './mail/index.js';
+export * from './queue/index.js';
 export { BUILT_IN_ROLES } from './roles/built-in.js';
 export { defaultRegistry, RoleRegistry, SpawnViolationError } from './roles/registry.js';
 export type {
