@@ -1,0 +1,49 @@
+service:
+  name: sisu
+  apiVersion: v1
+  host: 0.0.0.0
+  port: 8787
+
+storage:
+  driver: postgres
+  url: ${DATABASE_URL}
+
+runtimes:
+  default: openclaw
+  providers:
+    openclaw:
+      baseUrl: ${OPENCLAW_BASE_URL}
+      apiKey: ${OPENCLAW_API_KEY}
+    claude-code:
+      binary: claude
+      flags: ["--print", "--permission-mode", "bypassPermissions"]
+    codex:
+      binary: codex
+      flags: ["exec", "--full-auto", "--json"]
+    gemini-cli:
+      binary: gemini
+    pi:
+      binary: pi
+
+models:
+  routing:
+    strategic: "anthropic/claude-opus-4-6"
+    execution: "openai/gpt-5.4"
+    review: "anthropic/claude-sonnet-4-6"
+    observation: "anthropic/claude-haiku"
+  aliases:
+    opus: "anthropic/claude-opus-4-6"
+    sonnet: "anthropic/claude-sonnet-4-6"
+    haiku: "anthropic/claude-haiku"
+    codex: "openai/gpt-5.3-codex"
+    gpt54: "openai/gpt-5.4"
+    gemini: "google/gemini-3.1-pro-preview"
+
+compatibility:
+  apiMode: strict
+  preserveUnknownMetadata: true
+  minSdkVersion: "0.1.0"
+
+adapters:
+  enabled:
+    - mission-control
