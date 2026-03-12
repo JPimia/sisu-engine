@@ -22,6 +22,9 @@ importers:
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      pg:
+        specifier: ^8.13.0
+        version: 8.20.0
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.0.0
@@ -29,6 +32,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.15
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.18.0
       '@vitest/coverage-v8':
         specifier: ^2.1.8
         version: 2.1.9(vitest@2.1.9(@types/node@22.19.15))
