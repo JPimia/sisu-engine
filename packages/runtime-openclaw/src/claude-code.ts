@@ -1,5 +1,5 @@
-import type { ChildProcess } from 'node:child_process';
-import { spawn as spawnProcess, spawnSync } from 'node:child_process';
+import type { ChildProcess } from 'child_process';
+import { spawn as spawnProcess, spawnSync } from 'child_process';
 import type { AgentRuntime } from './interface.js';
 import type { AgentHandle, AgentStatus, LeaseStatus, SpawnConfig } from './types.js';
 
@@ -17,9 +17,9 @@ export class ClaudeCodeRuntime implements AgentRuntime {
   private readonly processes = new Map<string, ProcessEntry>();
 
   async spawn(config: SpawnConfig): Promise<AgentHandle> {
-    const args = ['--print', '--model', config.model, '--permission-mode', 'bypassPermissions'];
+    const args = ['--model', config.model, '--dangerously-skip-permissions'];
 
-    const child = spawnProcess('claude', args, {
+    const child: ChildProcess = spawnProcess('claude', args, {
       cwd: config.workingDirectory,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -48,7 +48,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
     child.once('exit', (code) => {
       const existing = this.processes.get(config.runId);
       if (existing && existing.status !== 'failed') {
-        existing.status = code === 0 ? 'active' : 'failed';
+        existing.status = code === 0 ? 'completed' : 'failed';
       }
     });
 

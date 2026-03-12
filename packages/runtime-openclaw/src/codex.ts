@@ -1,5 +1,5 @@
-import type { ChildProcess } from 'node:child_process';
-import { spawn as spawnProcess, spawnSync } from 'node:child_process';
+import type { ChildProcess } from 'child_process';
+import { spawn as spawnProcess, spawnSync } from 'child_process';
 import type { AgentRuntime } from './interface.js';
 import type { AgentHandle, AgentStatus, LeaseStatus, SpawnConfig } from './types.js';
 
@@ -19,7 +19,7 @@ export class CodexRuntime implements AgentRuntime {
   async spawn(config: SpawnConfig): Promise<AgentHandle> {
     const args = ['exec', '--full-auto', '--json', config.taskDescription];
 
-    const child = spawnProcess('codex', args, {
+    const child: ChildProcess = spawnProcess('codex', args, {
       cwd: config.workingDirectory,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -46,7 +46,7 @@ export class CodexRuntime implements AgentRuntime {
     child.once('exit', (code) => {
       const existing = this.processes.get(config.runId);
       if (existing && existing.status !== 'failed') {
-        existing.status = code === 0 ? 'active' : 'failed';
+        existing.status = code === 0 ? 'completed' : 'failed';
       }
     });
 
