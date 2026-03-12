@@ -1,0 +1,16 @@
+[
+	{
+		"id": "group-f5012e36",
+		"name": "phase-1-foundation",
+		"memberIssueIds": [
+			"sisu-7443",
+			"sisu-1863",
+			"sisu-8b64",
+			"sisu-1b07",
+			"sisu-ed0a"
+		],
+		"status": "completed",
+		"createdAt": "2026-03-12T17:33:47.594Z",
+		"completedAt": "2026-03-12T18:06:32.042Z"
+	}
+]
