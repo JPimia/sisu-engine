@@ -31,6 +31,447 @@ Horizontal scale comes first. SISU should run as a stateless API/service layer b
 Schema evolution must be additive by default. Forward compatibility matters. Unknown fields should survive round-trips through metadata bags and versioned envelopes.
 Mission Control is the control surface, SISU is the execution brain. The product owns UX and domain presentation. SISU owns orchestration logic and execution state.
 Stateless coordinator turns, not long-running sessions. The coordinator must NEVER be a long-running session that accumulates context until the window fills and quality degrades. Each coordinator decision is a fresh invocation with a curated context briefing assembled from storage. The coordinator reads, decides, writes back, and dies. Storage is the memory, not the context window. This is the bridge pattern to SCBS — when SCBS is ready, the briefing assembly becomes a real bundle request.
+
+Architecture Components
+SISU's runtime architecture consists of 11 components organized into three layers: Control, Execution, and Merge. This is the canonical architecture — all implementation must map to these components.
+
+Control Layer
+User / Operator
+The human or external system that submits objectives into SISU. In Mission Control context, this is the MC adapter translating user actions into SISU work items. The operator submits objectives, receives completion notifications, and can intervene on blocked or failed work.
+
+Global Planner
+The strategic brain of SISU. An AI-powered (Opus-tier) stateless decision-maker that:
+- Receives objectives from the operator
+- Gathers intelligence from Repo Memory Index, Token Budget Manager, Conflict Forecaster, and Contract Registry before making decisions
+- Creates task state and execution plans
+- Dispatches repo-local workstreams to Repo Coordinators
+- Receives ready_to_merge signals and submits work to the Merge Service
+- Makes decomposition decisions (split large objectives into sub-tasks)
+
+The Global Planner is NOT a long-running session. Each decision is a fresh LLM invocation with a curated context briefing. It reads, decides, writes, and dies. Storage is the memory.
+
+Repo Memory Index
+Persistent knowledge store of repository structure, module graph, file ownership, dependency maps, and historical context. The Global Planner queries this to understand what modules are affected by an objective and what context is relevant.
+
+When SCBS is integrated, the Repo Memory Index becomes backed by SCBS bundles (facts → claims → views) instead of raw file scanning.
+
+interface RepoMemoryQuery {
+  objectiveId: string;
+  scope: string[];           // file paths, module names, or "auto"
+  depth: "shallow" | "deep"; // shallow = direct deps, deep = transitive
+}
+
+interface RepoMemoryResult {
+  affectedModules: string[];
+  dependencyGraph: Record<string, string[]>;
+  recentChanges: { path: string; author: string; age: string }[];
+  knownContracts: string[];  // contract IDs touching these modules
+  contextSize: number;       // estimated tokens
+}
+
+Token Budget Manager (S1)
+Tracks and enforces token budgets across the entire system. Every agent spawn, every briefing assembly, every context pack has a token cost. The Token Budget Manager:
+- Provides budget policies to the Global Planner before dispatch
+- Tracks cumulative spend per work item, per agent, per project
+- Enforces hard limits and soft warnings
+- Enables cost-aware routing (prefer cheaper models when budget is tight)
+- Reports spend analytics for billing and optimization
+
+interface TokenBudgetPolicy {
+  workItemId: string;
+  maxTokens: number;           // hard ceiling for this work item
+  warningThreshold: number;    // soft warning at this level
+  currentSpend: number;        // tokens consumed so far
+  perAgentLimit?: number;      // max tokens per individual agent spawn
+  modelPreference?: string;    // budget-driven model suggestion
+}
+
+Conflict Forecaster (S2)
+Predicts scope overlap and merge risk BEFORE work begins, and validates conflict state AFTER work completes. Consulted at two points:
+1. Pre-dispatch: Global Planner asks "will this work conflict with anything in progress?"
+2. Pre-merge: Repo Coordinator asks "is it safe to merge this now?"
+
+interface ConflictPrediction {
+  workItemId: string;
+  riskScore: number;           // 0.0 (safe) to 1.0 (certain conflict)
+  overlappingItems: string[];  // work item IDs touching same files/modules
+  overlappingFiles: string[];  // specific file paths at risk
+  recommendation: "proceed" | "serialize" | "manual_review";
+}
+
+interface ConflictCheck {
+  workItemId: string;
+  conflictScore: number;       // post-completion conflict assessment
+  mergeBlocking: boolean;      // true = cannot auto-merge
+  details: string;             // human-readable conflict description
+}
+
+Contract Registry (S3)
+Tracks cross-repo and cross-module interface contracts. When work touches a module boundary, the Contract Registry answers: "will this break any contract?"
+
+interface ContractImpact {
+  workItemId: string;
+  affectedContracts: {
+    contractId: string;
+    type: "api" | "schema" | "interface" | "protocol";
+    breakingChange: boolean;
+    affectedConsumers: string[];
+  }[];
+  recommendation: "safe" | "review_required" | "breaking_change";
+}
+
+Repo Coordinator
+The tactical execution manager for a specific repository or workstream. Receives dispatched work from the Global Planner and manages the full execution lifecycle:
+- Requests scoped context packs from the Event Log / Repo Memory Index
+- Selects and launches the best-fit execution pod
+- Monitors pod execution via heartbeats and status updates
+- Collects proof bundles and completion status from pods
+- Runs final conflict precheck via the Conflict Forecaster
+- Signals ready_to_merge back to the Global Planner
+
+In a multi-repo objective, each repo gets its own Repo Coordinator instance. The Global Planner coordinates across them.
+
+Execution Layer
+Execution Pod
+The actual agent team that does the work. Pods are composed based on task characteristics:
+
+| Pod Type | Composition | When Used |
+|---|---|---|
+| Direct builder | Builder only | Tiny, isolated tasks with clear scope |
+| Scout + builder | Scout → Builder | Ambiguous tasks needing research first |
+| Builder + reviewer | Builder → Reviewer | High-risk tasks needing validation |
+| Full squad | Scout → Builder → Reviewer | Large tasks needing research, execution, and review |
+
+Each agent in the pod is a real LLM brain session spawned via the runtime adapter. Agents communicate through SISU mail. The pod composition is determined by the Repo Coordinator based on task kind, risk assessment, and workflow template.
+
+Merge Layer
+Merge Service
+Handles the final integration of completed work into the canonical branch:
+1. Receives merge submissions from the Global Planner
+2. Verifies interface compatibility (contract checks)
+3. Checks merge queue ordering and conflict risk via the Conflict Forecaster
+4. Performs canary checks (lint, typecheck, test subset)
+5. Executes the actual merge
+6. Pushes to the Remote Repo
+7. Reports delivery result
+
+The Merge Service is NOT a dumb git merge. It's an intelligent gate that prevents broken code from reaching the canonical branch.
+
+interface MergeRequest {
+  workItemId: string;
+  sourceBranch: string;
+  targetBranch: string;
+  conflictScore: number;      // from Conflict Forecaster
+  proofBundle: {
+    testsPass: boolean;
+    lintPass: boolean;
+    typecheckPass: boolean;
+    reviewApproved: boolean;
+    coverageDelta: number;
+  };
+}
+
+interface MergeResult {
+  workItemId: string;
+  status: "merged" | "rejected" | "conflict" | "canary_failed";
+  commitSha?: string;
+  rejectionReason?: string;
+}
+
+Remote Repo
+The canonical source of truth (GitHub, GitLab, etc.). SISU pushes merged changes here and records delivery results. The Remote Repo is external to SISU — it's the integration boundary.
+
+Shared Services
+Event Log (S4)
+The system-wide audit trail and state checkpoint store. Every significant state transition, agent action, and decision is recorded:
+- Work item status transitions
+- Agent spawn/stop/heartbeat events
+- Mail sent/received
+- Merge attempts and results
+- Conflict predictions and checks
+- Budget spend events
+- Context pack requests and responses
+
+The Event Log serves dual purposes:
+1. Audit: complete history of what happened and why
+2. Context: the Repo Coordinator queries recent events to build context delta packs for agents
+
+interface EventLogEntry {
+  id: string;                  // "evt_{ulid}"
+  timestamp: string;
+  category: "work_item" | "agent" | "mail" | "merge" | "conflict" | "budget" | "context" | "system";
+  action: string;              // e.g. "status_transition", "agent_spawned", "merge_completed"
+  workItemId?: string;
+  agentRunId?: string;
+  payload: Record<string, unknown>;
+}
+
+Outcome Learner (S5)
+Observes completed work items and learns which pod compositions, model choices, and workflow templates produce the best results. Provides routing hints to the Global Planner for future dispatch decisions:
+- Tracks success/failure rates per pod type per task kind
+- Measures token efficiency (cost per successful completion)
+- Identifies patterns (e.g. "scout+builder works better than direct builder for tasks touching >5 files")
+- Feeds routing suggestions back into the Global Planner's briefing
+
+This is the self-improvement loop. SISU gets smarter at dispatching over time.
+
+interface OutcomeRecord {
+  workItemId: string;
+  kind: string;
+  podType: string;
+  models: string[];
+  tokensUsed: number;
+  wallTimeMs: number;
+  result: "success" | "failed" | "rework";
+  reworkCount: number;
+  filesChanged: number;
+  complexity: number;          // estimated from scope
+}
+
+interface RoutingHint {
+  taskKind: string;
+  recommendedPod: string;
+  recommendedModels: Record<string, string>;
+  confidence: number;          // 0.0 to 1.0 based on sample size
+  sampleSize: number;
+}
+
+Execution Flow (27 Steps)
+This is the canonical sequence for a SISU objective from submission to merge:
+
+Phase 1: Intelligence Gathering (Steps 1-5)
+1. User/Operator → Global Planner: Submit objective
+2. Global Planner → Repo Memory Index: Load affected modules / repo graph context
+3. Global Planner → Token Budget Manager: Request budget policy
+4. Global Planner → Conflict Forecaster: Predict scope overlap / merge risk
+5. Global Planner → Contract Registry: Check cross-repo contract impact
+
+Phase 2: Planning & Dispatch (Steps 6-9)
+6. Global Planner → Repo Coordinator: Create task state and execution plan
+7. Repo Coordinator → Global Planner: Dispatch repo-local workstream (ack)
+8. Global Planner → Event Log: Request scoped context pack
+9. Event Log → Repo Coordinator: Context delta pack
+
+Phase 3: Execution (Steps 10-16)
+10. Repo Coordinator → Execution Pod: Launch best-fit execution pod
+    - [Tiny isolated task] → Direct builder execution
+    - [Ambiguous task] → Scout + builder execution
+    - [High-risk task] → Builder + reviewer execution
+    - [Large task] → Scout + builder + reviewer execution
+11-14. Execution Pod: Agents execute within the pod (internal mail, tool use, code changes)
+15. Execution Pod → Repo Coordinator: Proof bundle + completion status
+16. Event Log: State updates / checkpoints (continuous throughout execution)
+
+Phase 4: Conflict Resolution (Steps 17-19)
+17. Repo Coordinator → Conflict Forecaster: Final conflict precheck
+18. Conflict Forecaster → Repo Coordinator: Conflict score
+19. Repo Coordinator → Global Planner: ready_to_merge
+
+Phase 5: Merge & Delivery (Steps 20-27)
+20. Global Planner → Merge Service: Submit to merge service
+21. Merge Service: Verify interface compatibility
+22. Merge Service → Conflict Forecaster: Check merge queue / conflict risk
+23. Event Log: Record merge state
+24. Merge Service → Remote Repo: Canary checks + merge
+25. Remote Repo: Push merged changes to remote
+26. Remote Repo → Merge Service: Delivery result
+27. Event Log: Outcome history (feeds Outcome Learner)
+
+Flow Rules:
+- Solid arrows = command / task flow (imperative actions)
+- Dashed arrows = status / result flow (responses and state updates)
+- The Global Planner MUST gather intelligence (steps 2-5) before creating an execution plan
+- The Repo Coordinator MUST run conflict precheck before signaling ready_to_merge
+- The Merge Service MUST verify interface compatibility and run canary checks before merging
+- Every state transition is recorded in the Event Log
+- The Outcome Learner processes completed work items asynchronously to improve future routing
+
+Component-to-Package Mapping
+Architecture Component → Code Package:
+- Global Planner → @sisu/core/dispatch (AI brain, briefing assembly, dispatch logic)
+- Repo Memory Index → @sisu/core/context (repo scanning, module graph, SCBS bridge)
+- Token Budget Manager → @sisu/core/budget (spend tracking, policy enforcement)
+- Conflict Forecaster → @sisu/core/conflict (overlap prediction, merge risk scoring)
+- Contract Registry → @sisu/core/contracts (interface tracking, breaking change detection)
+- Repo Coordinator → @sisu/core/coordination (execution lifecycle, pod management)
+- Execution Pod → @sisu/core/pods + runtime adapters (agent composition, spawn)
+- Event Log → @sisu/core/events (audit trail, state checkpoints, context queries)
+- Merge Service → @sisu/core/merge (merge pipeline, canary checks, delivery)
+- Outcome Learner → @sisu/core/learner (outcome tracking, routing hints)
+
+SCBS-Integrated Architecture (16 Components, 41 Steps)
+When SCBS is integrated, the architecture expands from 11 to 16 components. The Repo Memory Index is replaced by the full SCBS compiler pipeline, adding 5 new components. The flow grows from 27 to 41 steps with two-bundle planning, agent receipts, and automatic invalidation cascading.
+
+This section defines the target architecture. The base architecture (11 components) is the MVP. The SCBS-integrated architecture is the production target.
+
+SCBS Components (replacing Repo Memory Index)
+When SCBS is active, the Repo Memory Index becomes a thin bridge that delegates to the SCBS pipeline. These 5 SCBS components sit behind a clean API boundary and can run as a standalone service or embedded:
+
+Truth Extraction (SCBS A1)
+Pulls raw repository-backed facts from source code, documentation, configs, and git history. This is the ground truth layer — everything starts here. Facts are typed, timestamped, and traceable to their source location.
+
+Claim Graph (SCBS A2)
+Transforms raw facts into anchored claims — structured assertions about the codebase with trust levels. Claims are the semantic layer: "module X exports interface Y", "function Z has complexity N", "file A depends on file B". Claims reference their source facts and can be validated, expired, or updated.
+
+Trust classes for claims:
+- verified — confirmed by test/CI/type system
+- anchored — derived from source code with high confidence
+- heuristic — inferred from patterns, lower confidence
+- dirty/stale — invalidated by recent changes, needs re-extraction
+- proposed — suggested by agent receipts, pending validation
+
+Context Views (SCBS A3)
+Compiles claims into task-scoped views — the minimal, relevant context a planner or agent needs. Views filter out noise and present only what matters for a specific objective. Think of it as: all claims → filtered by relevance → organized for consumption.
+
+Task Bundle Planner (SCBS A4)
+The final compilation stage. Takes a context view and compiles it into a ready-to-consume bundle — a structured context pack optimized for a specific decision or execution. Two bundle types:
+- Planning bundle: compiled for the Global Planner's dispatch decision (broader, strategic context)
+- Execution bundle: compiled for the Repo Coordinator and Execution Pod (narrower, tactical context with file-level detail)
+
+interface PlanningBundle {
+  id: string;                    // "bnd_{ulid}"
+  type: "planning";
+  objectiveId: string;
+  affectedModules: string[];
+  dependencyGraph: Record<string, string[]>;
+  relevantClaims: AnchoredClaim[];
+  recentChanges: { path: string; age: string; summary: string }[];
+  knownContracts: string[];
+  contextSize: number;           // token estimate
+  freshness: string;             // ISO timestamp of oldest included claim
+}
+
+interface ExecutionBundle {
+  id: string;                    // "bnd_{ulid}"
+  type: "execution";
+  workItemId: string;
+  fileScope: string[];           // exact files this agent should touch
+  relevantCode: { path: string; content: string; claims: string[] }[];
+  interfaces: { name: string; signature: string; consumers: string[] }[];
+  testContext: { path: string; covers: string[] }[];
+  constraints: string[];         // extracted from claims
+  contextSize: number;
+}
+
+Invalidation Engine (SCBS B1)
+Watches for repository changes and triggers automatic cascading expiry through all SCBS layers:
+- Change event → re-extract affected facts (Truth Extraction)
+- Stale facts → expire dependent claims (Claim Graph)
+- Stale claims → expire dependent views (Context Views)
+- Stale views → expire dependent bundles (Task Bundle Planner)
+
+This ensures agents never receive stale context. Invalidation is automatic, cascading, and deterministic — no manual cache-busting.
+
+Receipt Ingestion (SCBS C1)
+Receives agent receipts after execution — structured reports of what context an agent consumed, what it changed, and what it learned. Receipts flow back into the Claim Graph as provisional updates:
+- New claims from agent discoveries
+- Confidence adjustments on existing claims
+- New facts from code changes
+
+This is the feedback loop that makes SCBS self-improving: agents consume bundles, do work, report receipts, and the knowledge base updates.
+
+interface AgentReceipt {
+  id: string;                    // "rcpt_{ulid}"
+  agentRunId: string;
+  workItemId: string;
+  bundleId: string;              // which bundle was consumed
+  consumedClaims: string[];      // claim IDs that were useful
+  irrelevantClaims: string[];    // claim IDs that were noise
+  newFacts: { path: string; content: string; type: string }[];
+  proposedClaims: { statement: string; confidence: number; source: string }[];
+  filesChanged: string[];
+  timestamp: string;
+}
+
+SCBS-Integrated Execution Flow (41 Steps)
+This is the canonical sequence when SCBS is active. Steps 1-9 replace the Repo Memory Index query with a full SCBS compilation pipeline.
+
+Phase 1: SCBS Bundle Assembly (Steps 1-9)
+1. User/Operator → Global Planner: Submit objective
+2. Global Planner → Task Bundle Planner: Request planning bundle
+3. Task Bundle Planner → Context Views: Request task-specific context view
+4. Context Views → Claim Graph: Resolve anchored claims
+5. Claim Graph → Truth Extraction: Pull repository-backed facts
+6. Truth Extraction → Claim Graph: Trusted facts
+7. Claim Graph → Context Views: Anchored claims
+8. Context Views → Task Bundle Planner: Scoped planning view
+9. Task Bundle Planner → Global Planner: Compiled planning bundle
+
+Phase 2: Intelligence Gathering (Steps 10-12)
+10. Global Planner → Token Budget Manager: Request budget policy
+11. Global Planner → Conflict Forecaster: Predict conflict risk
+12. Global Planner → Contract Registry: Check contract impact
+
+Phase 3: Planning & Dispatch (Steps 13-16)
+13. Global Planner → Repo Coordinator: Create task state and execution plan
+14. Repo Coordinator → Global Planner: Dispatch repo-local workstream (ack)
+15. Repo Coordinator → Task Bundle Planner: Request execution bundle
+16. Task Bundle Planner → Repo Coordinator: Compiled execution bundle
+
+Phase 4: Execution (Steps 17-26)
+17. Repo Coordinator → Execution Pod: Launch best-fit execution pod
+18. Repo Coordinator → Execution Pod: Provide compiled task bundle
+19-22. Execution Pod: Pod type selection and execution
+    - [Tiny isolated task] → Direct builder execution (19)
+    - [Ambiguous task] → Scout + builder execution (20)
+    - [High-risk task] → Builder + reviewer execution (21)
+    - [Large task] → Scout + builder + reviewer execution (22)
+23. Execution Pod → Repo Coordinator: Proof bundle + completion status
+24. Event Log: State updates / checkpoints (continuous)
+25. Execution Pod → Receipt Ingestion: Agent receipt (what was consumed, changed, learned)
+26. Receipt Ingestion → Claim Graph: Validated provisional updates
+
+Phase 5: Conflict Resolution (Steps 27-29)
+27. Repo Coordinator → Conflict Forecaster: Final conflict precheck
+28. Conflict Forecaster → Repo Coordinator: Conflict score
+29. Repo Coordinator → Global Planner: ready_to_merge
+
+Phase 6: Merge & Delivery (Steps 30-36)
+30. Global Planner → Merge Service: Submit to merge service
+31. Merge Service: Verify interface compatibility
+32. Merge Service → Conflict Forecaster: Check merge queue / conflict risk
+33. Event Log: Record merge state
+34. Merge Service → Remote Repo: Canary checks + merge
+35. Remote Repo: Push merged changes to remote
+36. Remote Repo → Merge Service: Delivery result
+
+Phase 7: Invalidation Cascade (Steps 37-41, parallel on repository changes)
+37. Remote Repo → Truth Extraction: Change events
+38. Truth Extraction: Refresh extraction (re-pull affected facts)
+39. Invalidation Engine → Claim Graph: Expire stale claims
+40. Invalidation Engine → Context Views: Expire stale views
+41. Invalidation Engine → Task Bundle Planner: Expire stale bundles
+
+Key Differences from Base Architecture:
+- Repo Memory Index is REPLACED by SCBS pipeline (A1-A4) — no more raw file scanning
+- TWO bundles per work item: planning bundle (Global Planner) + execution bundle (Repo Coordinator/Pod)
+- Agent receipts create a FEEDBACK LOOP: execution → receipts → claim updates → better future bundles
+- Invalidation is AUTOMATIC and CASCADING: repo changes propagate through all SCBS layers
+- Context is a COMPILER: repository → facts → claims → views → bundles (like source → tokens → AST → IR → binary)
+
+SCBS-Integrated Global Planner Briefing:
+When SCBS is active, the GlobalPlannerBriefing changes:
+- repoContext (RepoMemoryResult) is replaced by planningBundle (PlanningBundle)
+- The briefing assembly calls SCBS Bundle API instead of scanning repos directly
+- Routing hints from Outcome Learner are enriched by receipt analytics from SCBS
+
+SCBS API Boundary:
+SCBS exposes three APIs that SISU consumes:
+- Bundle API: request planning/execution bundles by objective or work item scope
+- Receipt API: submit agent receipts after execution completes
+- Freshness/Invalidation API: query claim freshness, trigger manual re-extraction
+
+These APIs are the ONLY integration points. SISU never reaches into SCBS internals.
+
+SCBS-Integrated Component-to-Package Mapping:
+- Truth Extraction → @scbs/extraction
+- Claim Graph → @scbs/core (claim storage, trust levels, graph queries)
+- Context Views → @scbs/views (view compilation, relevance filtering)
+- Task Bundle Planner → @scbs/core (bundle compilation, planning/execution split)
+- Invalidation Engine → @scbs/freshness (cascade logic, change watchers)
+- Receipt Ingestion → @scbs/receipts (validation, provisional claim creation)
+- SISU ↔ SCBS bridge → @sisu/core/context (delegates to SCBS APIs when available, falls back to Repo Memory Index when not)
+
 On-Disk Format
 SISU is a standalone repository with a package boundary, API server, SDK, and integration adapter(s).
 
@@ -351,15 +792,30 @@ supportedCapabilities: string[];
 webhookUrl?: string;
 metadata?: Record<string, unknown>;
 }
-Coordinator Briefing
-The coordinator is a stateless AI brain. Each decision (dispatch, rework, escalation, decomposition) is a fresh LLM invocation with a curated context pack — NOT a long-running session that accumulates garbage.
+Global Planner Briefing
+The Global Planner is a stateless AI brain. Each decision (dispatch, rework, escalation, decomposition) is a fresh LLM invocation with a curated context pack assembled from the architecture's shared services — NOT a long-running session that accumulates garbage.
 
-interface CoordinatorBriefing {
+The briefing is assembled by querying all relevant architecture components before invoking the AI:
+- Repo Memory Index → affected modules, dependency graph, recent changes
+- Token Budget Manager → budget policy, current spend, per-agent limits
+- Conflict Forecaster → overlap predictions, risk scores
+- Contract Registry → contract impact assessment
+- Event Log → recent events, context delta
+- Outcome Learner → routing hints from historical performance
+
+interface GlobalPlannerBriefing {
 // Decision type
-decision: "dispatch" | "decompose" | "rework" | "escalate" | "review_result" | "stall_check";
+decision: "dispatch" | "decompose" | "rework" | "escalate" | "review_result" | "stall_check" | "merge_decision";
 
 // The thing we're deciding about (full detail)
 subject: WorkItem;
+
+// Intelligence from shared services (steps 2-5 of the flow)
+repoContext: RepoMemoryResult;           // from Repo Memory Index
+budgetPolicy: TokenBudgetPolicy;         // from Token Budget Manager
+conflictPrediction: ConflictPrediction;  // from Conflict Forecaster
+contractImpact: ContractImpact;          // from Contract Registry
+routingHints: RoutingHint[];             // from Outcome Learner
 
 // Compact summaries of related state — NOT full objects
 activeItems: { id: string; title: string; status: WorkItemStatus; assignee?: string; kind: string }[];
@@ -375,17 +831,22 @@ availableWorkflows: WorkflowTemplate[];
 // Execution state for this work item (if plan exists)
 currentPlan?: ExecutionPlan;
 
+// Recent events from Event Log
+recentEvents: EventLogEntry[];
+
 // Token budget for this briefing
 tokenBudget: number;
 }
 
 Rules:
-- Briefing is assembled by a context compiler function that queries storage
+- Briefing is assembled by querying architecture components: Repo Memory Index, Token Budget Manager, Conflict Forecaster, Contract Registry, Event Log, Outcome Learner
+- The Global Planner MUST have intelligence from all shared services before making a dispatch decision (steps 2-5)
 - Completed work items appear as one-line summaries, not full objects
 - Mail is filtered to the last 5-10 relevant messages, not the full history
-- The coordinator session starts, receives the briefing, makes ONE decision, persists it, and ends
+- The planner session starts, receives the briefing, makes ONE decision, persists it, and ends
 - Storage is the memory. The context window is temporary. Never rely on accumulated session state.
-- When SCBS is integrated, this briefing assembly becomes a proper SCBS bundle request
+- When SCBS is integrated, the Repo Memory Index queries become SCBS bundle requests
+- Routing hints from Outcome Learner inform pod type and model selection but don't override explicit workflow templates
 
 ID Generation
 Work items: wrk_{ulid}
@@ -705,12 +1166,21 @@ types.ts
 version.ts
 core/
 src/
-roles/
-dispatch/
-lifecycle/
-mail/
-queue/
-compatibility/
+dispatch/       # Global Planner logic (AI briefing, decision, decomposition)
+coordination/   # Repo Coordinator (execution lifecycle, pod management)
+context/        # Repo Memory Index (module graph, file scanning, SCBS bridge)
+budget/         # Token Budget Manager (spend tracking, policy enforcement)
+conflict/       # Conflict Forecaster (overlap prediction, merge risk)
+contracts/      # Contract Registry (interface tracking, breaking changes)
+events/         # Event Log (audit trail, state checkpoints, context queries)
+merge/          # Merge Service (merge pipeline, canary checks, delivery)
+learner/        # Outcome Learner (routing hints, performance tracking)
+pods/           # Execution Pod composition (agent team selection, spawn)
+roles/          # Role registry and definitions
+lifecycle/      # Work item state machine
+mail/           # Inter-agent mail system
+queue/          # Database-backed job queue
+compatibility/  # Adapter compatibility
 sdk/
 src/
 client.ts
@@ -843,13 +1313,16 @@ package.json Scripts
 }
 Estimated Size
 Area	Files	LOC
-Protocol + schemas	8	~700
-Core orchestration engine	14	~1,400
+Protocol + schemas	12	~1,100
+Core: dispatch + coordination	8	~900
+Core: shared services (budget, conflict, contracts, events, learner, merge)	18	~2,200
+Core: context (repo memory index)	4	~500
+Core: pods + roles + lifecycle + mail + queue	14	~1,400
 API server	10	~900
 SDK	6	~450
 OpenClaw runtime adapter	5	~400
 Mission Control adapter	6	~500
 Templates / workflows	12	~500
-Tests	15	~1,400
+Tests	25	~2,500
 Infra / scripts / docs	10	~700
-Total	86	~6,950
+Total	130	~12,050
