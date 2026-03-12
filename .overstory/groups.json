@@ -24,5 +24,15 @@
 		"status": "completed",
 		"createdAt": "2026-03-12T18:21:51.397Z",
 		"completedAt": "2026-03-12T18:43:08.839Z"
+	},
+	{
+		"id": "group-aa0ea4d7",
+		"name": "phase-3-cli",
+		"memberIssueIds": [
+			"sisu-9bb3"
+		],
+		"status": "active",
+		"createdAt": "2026-03-12T18:49:03.253Z",
+		"completedAt": null
 	}
 ]
