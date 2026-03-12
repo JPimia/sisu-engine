@@ -1,0 +1,18 @@
+PHASE 2 IS COMPLETE. START PHASE 3 NOW. THIS IS THE FINAL MVP PHASE.
+
+Read .overstory/specs/phase-3-cli-and-dashboard.md. This is your ONLY task.
+
+ONLY build:
+1. apps/cli/ — The sisu CLI binary using commander. Commands: init, health, doctor, work create/list/show/dispatch/cancel/retry, agents, agents stop, mail list/show, roles, workflows. Every command supports --json.
+2. sisu dashboard — Live ANSI terminal dashboard refreshing every 2 seconds. Shows active agents with role/model/duration, work items with status, recent mail. Color coded. Quit with q or Ctrl+C. Use raw ANSI escape codes, no heavy TUI framework.
+3. End-to-end flow must work: sisu init, sisu work create, sisu work dispatch, sisu dashboard shows agent working, agent completes, work item transitions to done.
+
+EXIT CRITERIA — Phase 3 is DONE when:
+- sisu init creates a working local environment
+- sisu work create plus sisu work dispatch spawns a real Claude Code agent
+- sisu dashboard shows the agent working in real-time
+- Agent completes and work item transitions to done
+- All tests pass with 90 percent coverage
+- pnpm lint, typecheck, and test all green
+
+Create seeds, decompose, sling builders. Push to origin/main when done.
