@@ -1,0 +1,75 @@
+id: wf_multi_stream_feature
+name: Multi-Stream Feature
+version: "1.0.0"
+description: >
+  Lead decomposes a feature into parallel builder streams with non-overlapping
+  file scopes. Each stream has its own reviewer. A merger integrates the
+  reviewed results. Use for features that span multiple packages or subsystems
+  and can be safely parallelized.
+
+appliesTo:
+  - planning
+
+requiredCapabilities: []
+
+steps:
+  - id: plan
+    role: lead
+    description: >
+      Decompose the feature into parallel work streams. For each stream, define:
+      (1) a clear sub-spec describing what to build, (2) an exclusive file scope
+      with no overlaps across streams, (3) success criteria. Streams should be
+      independently executable — shared interfaces must be specified upfront.
+    dependencies: []
+    config: {}
+
+  - id: build_a
+    role: builder
+    description: >
+      Implement stream A according to the lead's sub-spec and file scope.
+      Do not modify files belonging to stream B.
+    dependencies:
+      - plan
+    config:
+      stream: a
+
+  - id: build_b
+    role: builder
+    description: >
+      Implement stream B according to the lead's sub-spec and file scope.
+      Do not modify files belonging to stream A.
+    dependencies:
+      - plan
+    config:
+      stream: b
+
+  - id: review_a
+    role: reviewer
+    description: >
+      Review stream A implementation against the lead's sub-spec for stream A.
+      Issue review_pass or review_fail with specific blockers.
+    dependencies:
+      - build_a
+    config:
+      stream: a
+
+  - id: review_b
+    role: reviewer
+    description: >
+      Review stream B implementation against the lead's sub-spec for stream B.
+      Issue review_pass or review_fail with specific blockers.
+    dependencies:
+      - build_b
+    config:
+      stream: b
+
+  - id: merge
+    role: merger
+    description: >
+      Integrate the reviewed streams into a coherent whole. Resolve any conflicts
+      at shared boundaries. Verify the merged result passes all quality gates.
+      Produce a summary of conflict resolutions in the commit message.
+    dependencies:
+      - review_a
+      - review_b
+    config: {}

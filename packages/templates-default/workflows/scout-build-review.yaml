@@ -1,0 +1,44 @@
+id: wf_scout_build_review
+name: Scout + Build + Review
+version: "1.0.0"
+description: >
+  Scout researches the codebase first, then builder implements with full
+  situational awareness, then reviewer validates. Use when the codebase
+  context is complex, poorly documented, or the task touches unfamiliar
+  areas. The scout report is passed to both builder and reviewer.
+
+appliesTo:
+  - ready
+  - planning
+
+requiredCapabilities: []
+
+steps:
+  - id: scout
+    role: scout
+    description: >
+      Research the codebase. Produce a structured report covering:
+      current state of relevant code, relevant file paths, known risks,
+      integration points, and open questions that should be resolved
+      before building.
+    dependencies: []
+    config: {}
+
+  - id: build
+    role: builder
+    description: >
+      Implement the task using the scout report as context. The scout
+      findings are available in the dispatch mail payload.
+    dependencies:
+      - scout
+    config: {}
+
+  - id: review
+    role: reviewer
+    description: >
+      Review the implementation. Use both the original spec and the scout
+      findings to evaluate correctness, coverage, and risk mitigation.
+      Issue review_pass or review_fail.
+    dependencies:
+      - build
+    config: {}

@@ -30,6 +30,21 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9
 
+  packages/templates-default:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.0.0
+        version: 2.4.6
+      '@vitest/coverage-v8':
+        specifier: ^2.1.8
+        version: 2.1.9(vitest@2.1.9)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9
+
 packages:
 
   '@ampproject/remapping@2.3.0':
