@@ -1,0 +1,13 @@
+PHASE 1 IS COMPLETE. START PHASE 2 NOW.
+
+FIRST: Fix the SQLite storage test failures in packages/core/src/storage/sqlite.test.ts. The tests fail because storage.close is not a function — the better-sqlite3 API may need adjustment after Node 22 upgrade. Fix this BEFORE starting Phase 2 work. Run pnpm test to verify all 98 tests pass.
+
+THEN: Read .overstory/specs/phase-2-engine-and-runtime.md. This is your ONLY task. Do NOT read phase-3 spec. Do NOT work on CLI or dashboard.
+
+ONLY build:
+1. packages/core/src/dispatch/ — Coordinator briefing assembler and dispatcher. CRITICAL: The coordinator is NOT a long-running session. Each decision is a fresh invocation with a curated briefing from storage. Read the CoordinatorBriefing type in SPEC.md.
+2. packages/core/src/mail/ — Inter-agent mailbox system
+3. packages/runtime-openclaw/ — AgentRuntime interface plus Claude Code and Codex adapters
+4. packages/core/src/queue/ — Simple job queue with SQLite backing
+
+Create seeds, decompose into worker tasks, then start slinging builders. Every new file needs tests. 90 percent coverage. pnpm lint, typecheck, and test must all pass. Push to origin/main when Phase 2 is complete. Do NOT start Phase 3 until Phase 2 is fully green.
