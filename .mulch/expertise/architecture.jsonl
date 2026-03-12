@@ -1,0 +1,1 @@
+{"type":"pattern","name":"lockfile-conflict-resolution","description":"pnpm-lock.yaml add/add conflicts: delete the conflicted lockfile and regenerate with pnpm install; do not attempt to manually resolve lockfile conflicts","classification":"tactical","recorded_at":"2026-03-12T17:48:49.798Z","id":"mx-2af4d7"}
