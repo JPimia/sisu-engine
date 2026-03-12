@@ -238,6 +238,38 @@ describe('SqliteStorage — ExecutionPlans', () => {
       storage.updatePlanStep('plan_GHOST', 'step_X', { status: 'done' }),
     ).rejects.toThrow('ExecutionPlan not found');
   });
+
+  it('getPlanByWorkItem returns null when no plan exists', async () => {
+    expect(await storage.getPlanByWorkItem('wrk_GHOST')).toBeNull();
+  });
+
+  it('getPlanByWorkItem returns the plan for a work item', async () => {
+    const plan = await storage.createPlan({
+      workItemId: 'wrk_FINDME',
+      workflowTemplateId: 'wf_test',
+      steps: [{ workflowStepId: 's1', role: 'builder' }],
+    });
+    const found = await storage.getPlanByWorkItem('wrk_FINDME');
+    expect(found?.id).toBe(plan.id);
+    expect(found?.workItemId).toBe('wrk_FINDME');
+    expect(found?.steps).toHaveLength(1);
+  });
+
+  it('getPlanByWorkItem returns the most recent plan when multiple exist', async () => {
+    await storage.createPlan({
+      workItemId: 'wrk_MULTI',
+      workflowTemplateId: 'wf_first',
+      steps: [{ workflowStepId: 's1', role: 'builder' }],
+    });
+    const second = await storage.createPlan({
+      workItemId: 'wrk_MULTI',
+      workflowTemplateId: 'wf_second',
+      steps: [{ workflowStepId: 's1', role: 'reviewer' }],
+    });
+    const found = await storage.getPlanByWorkItem('wrk_MULTI');
+    expect(found?.id).toBe(second.id);
+    expect(found?.workflowTemplateId).toBe('wf_second');
+  });
 });
 
 describe('SqliteStorage — Mail', () => {

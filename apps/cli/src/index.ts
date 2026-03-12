@@ -7,6 +7,7 @@ import { makeHealthCommand } from './commands/health.js';
 import { makeInitCommand } from './commands/init.js';
 import { makeMailCommand } from './commands/mail.js';
 import { makeRolesCommand, makeWorkflowsCommand } from './commands/roles.js';
+import { makeRunCommand } from './commands/run.js';
 import { makeWorkCommand } from './commands/work.js';
 
 const program = new Command();
@@ -16,6 +17,7 @@ program.name('sisu').description('SISU — AI agent orchestration engine CLI').v
 program.addCommand(makeInitCommand());
 program.addCommand(makeHealthCommand());
 program.addCommand(makeDoctorCommand());
+program.addCommand(makeRunCommand());
 program.addCommand(makeWorkCommand());
 program.addCommand(makeAgentsCommand());
 program.addCommand(makeMailCommand());
