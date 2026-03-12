@@ -483,7 +483,7 @@ export class SqliteStorage implements SisuStorage {
   getPlanByWorkItem(workItemId: string): Promise<ExecutionPlan | null> {
     const planRow = this.db
       .prepare(
-        'SELECT * FROM execution_plans WHERE work_item_id = ? ORDER BY created_at DESC LIMIT 1',
+        'SELECT * FROM execution_plans WHERE work_item_id = ? ORDER BY rowid DESC LIMIT 1',
       )
       .get(workItemId) as PlanRow | undefined;
     if (!planRow) return Promise.resolve(null);
