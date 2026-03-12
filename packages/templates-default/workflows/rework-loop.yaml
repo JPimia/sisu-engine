@@ -1,0 +1,49 @@
+id: wf_rework_loop
+name: Rework Loop
+version: "1.0.0"
+description: >
+  Builder implements, reviewer evaluates, builder reworks on failure.
+  The loop continues until review passes or the escalation threshold is
+  reached (configurable per deployment, default: 3 iterations).
+  Use when the first attempt is expected to need iteration — complex specs,
+  high-quality-bar work, or recovery from prior failures.
+
+appliesTo:
+  - ready
+  - planning
+  - in_review
+
+requiredCapabilities: []
+
+steps:
+  - id: build
+    role: builder
+    description: >
+      Implement the task within the assigned file scope. Run all quality
+      gates before reporting completion. Include all prior review feedback
+      in context if this is a rework iteration.
+    dependencies: []
+    config: {}
+
+  - id: review
+    role: reviewer
+    description: >
+      Review the implementation. Issue review_pass or review_fail.
+      For review_fail, enumerate all blocking issues clearly so the builder
+      can address them without additional guidance.
+    dependencies:
+      - build
+    config: {}
+
+  - id: rework
+    role: builder
+    description: >
+      Address all reviewer feedback from the review step. Re-implement the
+      affected sections, re-run quality gates, and re-submit.
+      This step is only triggered when the review step issues review_fail.
+      On completion, a new review cycle begins (handled by the coordinator).
+    dependencies:
+      - review
+    config:
+      conditional: review_fail
+      loops_back_to: review

@@ -1,0 +1,20 @@
+id: wf_simple_task
+name: Simple Task
+version: "1.0.0"
+description: >
+  Single builder executes a scoped task directly. No review required.
+  Use for low-risk, well-scoped tasks where the spec is complete and
+  the file scope is narrow.
+
+appliesTo:
+  - ready
+  - planning
+
+requiredCapabilities: []
+
+steps:
+  - id: build
+    role: builder
+    description: Implement the task within the assigned file scope
+    dependencies: []
+    config: {}

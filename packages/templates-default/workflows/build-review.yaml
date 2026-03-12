@@ -1,0 +1,29 @@
+id: wf_build_review
+name: Build + Review
+version: "1.0.0"
+description: >
+  Builder implements, reviewer validates. Standard quality gate for
+  production-bound work. Use when correctness matters and a second pair
+  of eyes adds meaningful signal.
+
+appliesTo:
+  - ready
+  - planning
+
+requiredCapabilities: []
+
+steps:
+  - id: build
+    role: builder
+    description: Implement the task within the assigned file scope
+    dependencies: []
+    config: {}
+
+  - id: review
+    role: reviewer
+    description: >
+      Review the implementation for spec adherence, test coverage,
+      code quality, and correctness. Issue review_pass or review_fail.
+    dependencies:
+      - build
+    config: {}
