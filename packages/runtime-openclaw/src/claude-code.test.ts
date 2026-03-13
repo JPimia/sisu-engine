@@ -90,7 +90,7 @@ describe('ClaudeCodeRuntime', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         RESOLVED_CLAUDE,
-        ['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions', 'Do the thing'],
+        ['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions', '-p', 'Do the thing'],
         { cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'], env: EXPECTED_ENV },
       );
     });

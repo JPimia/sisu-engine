@@ -75,7 +75,7 @@ export const BUILT_IN_ROLES: readonly RoleDefinition[] = [
       'ensures liveness and coherence across all active work items. ' +
       'The orchestrator is the top-level brain — it does not execute work directly ' +
       'but maintains awareness and intervenes when the system is unhealthy.',
-    modelPreference: 'anthropic/claude-opus-4-6',
+    modelPreference: 'openai/gpt-5.4',
     modelTier: 'strategic',
     canSpawn: ['coordinator', 'supervisor', 'monitor'],
     access: {
@@ -113,7 +113,7 @@ export const BUILT_IN_ROLES: readonly RoleDefinition[] = [
       'stream of related tasks, handles escalations from leads, validates intermediate ' +
       'results, and intervenes when execution stalls. ' +
       'Uses Sonnet for routine oversight, Opus when escalation demands deep reasoning.',
-    modelPreference: 'anthropic/claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     modelTier: 'strategic',
     canSpawn: ['lead', 'scout', 'builder', 'reviewer', 'merger', 'monitor'],
     access: {
@@ -132,7 +132,7 @@ export const BUILT_IN_ROLES: readonly RoleDefinition[] = [
       'sub-task breakdown, assigns builders and reviewers, tracks progress, and consolidates ' +
       'results. The lead thinks about HOW to do the work — decomposition, dependencies, ' +
       'sequencing — not the execution itself.',
-    modelPreference: 'anthropic/claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     modelTier: 'strategic',
     canSpawn: ['scout', 'builder', 'reviewer', 'merger'],
     access: {
@@ -151,7 +151,7 @@ export const BUILT_IN_ROLES: readonly RoleDefinition[] = [
       'relevant file paths, open questions. ' +
       'The scout provides the builder and lead with the context they need to act effectively. ' +
       'Cannot write code or modify files.',
-    modelPreference: 'anthropic/claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     modelTier: 'review',
     canSpawn: [],
     access: {
@@ -187,7 +187,7 @@ export const BUILT_IN_ROLES: readonly RoleDefinition[] = [
       'or pass with warnings. ' +
       'The reviewer exercises genuine judgment — it can reject work, demand rework, ' +
       'and escalate unresolvable issues. Not a rubber stamp.',
-    modelPreference: 'anthropic/claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     modelTier: 'review',
     canSpawn: [],
     access: {
@@ -222,7 +222,7 @@ export const BUILT_IN_ROLES: readonly RoleDefinition[] = [
       'identifies anomalous patterns (repeated failures, cost spikes, timeout clusters), ' +
       'and sends escalation mail when thresholds are breached. ' +
       'Uses cheap models for continuous observation. Escalates to supervisor or orchestrator.',
-    modelPreference: 'anthropic/claude-haiku',
+    modelPreference: 'openai/gpt-5.4',
     modelTier: 'observation',
     canSpawn: [],
     access: {
