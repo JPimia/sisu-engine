@@ -35,6 +35,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       config.model,
       '--permission-mode',
       'bypassPermissions',
+      '-p',
       config.taskDescription,
     ];
 
