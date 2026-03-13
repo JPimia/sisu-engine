@@ -48,8 +48,8 @@ describe('selectWorkflow', () => {
     expect(selectWorkflow(item, [wf])).toBe(wf);
   });
 
-  it('returns default wf_simple-task when nothing matches', () => {
-    const dflt = makeWorkflow('wf_simple-task', []);
+  it('returns default wf_build_review when nothing matches', () => {
+    const dflt = makeWorkflow('wf_build_review', []);
     const other = makeWorkflow('wf_review', ['in_review']);
     const item = makeWorkItem({ status: 'ready' });
     expect(selectWorkflow(item, [other, dflt])).toBe(dflt);
