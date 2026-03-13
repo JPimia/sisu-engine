@@ -1,6 +1,6 @@
 import type { WorkflowTemplate, WorkItem } from '@sisu/protocol';
 
-const DEFAULT_WORKFLOW_ID = 'wf_simple-task';
+const DEFAULT_WORKFLOW_ID = 'wf_build_review';
 
 /**
  * Select a workflow template for a work item.

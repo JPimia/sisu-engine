@@ -244,7 +244,7 @@ export const BUILT_IN_WORKFLOWS: readonly WorkflowTemplate[] = [
     name: 'Simple Task',
     description: 'Single builder executes a scoped task directly. No review required.',
     version: '1.0.0',
-    appliesTo: ['ready', 'planning'],
+    appliesTo: ['ready'],
     requiredCapabilities: [],
     steps: [
       {
