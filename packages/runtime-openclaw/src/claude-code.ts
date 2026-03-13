@@ -2,15 +2,25 @@
 import type { ChildProcess } from 'child_process';
 // biome-ignore lint/style/useNodejsImportProtocol: see above
 import { spawn as spawnProcess, spawnSync } from 'child_process';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import type { AgentRuntime } from './interface.js';
 import type { AgentHandle, AgentStatus, LeaseStatus, SpawnConfig } from './types.js';
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const LEASE_TTL_MS = 60_000;
 
+function resolveClaude(): string {
+  const bunPath = join(homedir(), '.bun', 'bin', 'claude');
+  return existsSync(bunPath) ? bunPath : 'claude';
+}
+
 interface ProcessEntry {
   process: ChildProcess;
   status: AgentStatus;
+  stdout: string;
+  stderr: string;
 }
 
 export class ClaudeCodeRuntime implements AgentRuntime {
@@ -19,6 +29,7 @@ export class ClaudeCodeRuntime implements AgentRuntime {
   private readonly processes = new Map<string, ProcessEntry>();
 
   async spawn(config: SpawnConfig): Promise<AgentHandle> {
+    const claudeBin = resolveClaude();
     const args = [
       '--model',
       config.model,
@@ -27,15 +38,37 @@ export class ClaudeCodeRuntime implements AgentRuntime {
       config.taskDescription,
     ];
 
-    const child: ChildProcess = spawnProcess('claude', args, {
+    const bunInstall = join(homedir(), '.bun');
+    const bunBin = join(bunInstall, 'bin');
+    const spawnEnv = {
+      ...process.env,
+      BUN_INSTALL: bunInstall,
+      PATH: `${bunBin}:${process.env.PATH ?? ''}`,
+      CLAUDE_NO_CHROME: '1',
+    };
+
+    const child: ChildProcess = spawnProcess(claudeBin, args, {
       cwd: config.workingDirectory,
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: spawnEnv,
     });
 
-    const entry: ProcessEntry = { process: child, status: 'spawning' };
+    const entry: ProcessEntry = { process: child, status: 'spawning', stdout: '', stderr: '' };
     this.processes.set(config.runId, entry);
 
-    child.stdin?.end();
+    child.stdout?.on('data', (chunk: Buffer) => {
+      const existing = this.processes.get(config.runId);
+      if (existing) {
+        existing.stdout += chunk.toString();
+      }
+    });
+
+    child.stderr?.on('data', (chunk: Buffer) => {
+      const existing = this.processes.get(config.runId);
+      if (existing) {
+        existing.stderr += chunk.toString();
+      }
+    });
 
     child.once('spawn', () => {
       const existing = this.processes.get(config.runId);
@@ -99,6 +132,10 @@ export class ClaudeCodeRuntime implements AgentRuntime {
 
   async isAvailable(): Promise<boolean> {
     try {
+      const claudeBin = join(homedir(), '.bun', 'bin', 'claude');
+      if (existsSync(claudeBin)) {
+        return true;
+      }
       const result = spawnSync('which', ['claude'], { encoding: 'utf8' });
       return result.status === 0;
     } catch {
