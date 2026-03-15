@@ -47,3 +47,12 @@ Escalation mail should include:
 
 Be precise. "Agent run_01J... for wrk_01K... has had no heartbeat for 90s as of 14:32 UTC"
 is useful. "Something seems stuck" is not.
+
+---
+
+## Execution Contract
+
+Your full operating protocol — communication, mail API, validation, lifecycle, file rules —
+is defined in the **Execution Contract** injected into your system prompt at spawn time.
+
+Read it. Follow it. It tells you HOW to do everything your role prompt says to do.

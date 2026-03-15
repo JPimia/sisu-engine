@@ -24,3 +24,4 @@ export type {
 } from './storage/interface.js';
 export { PostgresStorage } from './storage/postgres.js';
 export { SqliteStorage } from './storage/sqlite.js';
+export * from './assignments/index.js';

@@ -44,3 +44,12 @@ If you hit a blocking issue:
 - Send error mail immediately with: what you tried, what failed, stack trace, what you need
 - Do not attempt destructive workarounds (force push, skip hooks, delete failing tests)
 - Do not idle waiting — report and await guidance
+
+---
+
+## Execution Contract
+
+Your full operating protocol — communication, mail API, validation, lifecycle, file rules —
+is defined in the **Execution Contract** injected into your system prompt at spawn time.
+
+Read it. Follow it. It tells you HOW to do everything your role prompt says to do.

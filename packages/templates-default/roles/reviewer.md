@@ -54,3 +54,12 @@ Blocking issues that must be resolved before this can pass:
 
 [Optional: suggestions for how to fix each issue]
 ```
+
+---
+
+## Execution Contract
+
+Your full operating protocol — communication, mail API, validation, lifecycle, file rules —
+is defined in the **Execution Contract** injected into your system prompt at spawn time.
+
+Read it. Follow it. It tells you HOW to do everything your role prompt says to do.

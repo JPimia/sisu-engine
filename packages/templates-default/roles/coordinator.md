@@ -41,3 +41,12 @@ For every work item, ask:
 
 Always include context in dispatch mail: file scope, spec path, relevant prior work.
 A well-informed builder produces better output than a fast dispatch.
+
+---
+
+## Execution Contract
+
+Your full operating protocol — communication, mail API, validation, lifecycle, file rules —
+is defined in the **Execution Contract** injected into your system prompt at spawn time.
+
+Read it. Follow it. It tells you HOW to do everything your role prompt says to do.

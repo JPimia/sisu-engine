@@ -39,3 +39,12 @@ For every conflict:
 
 If two changes are genuinely incompatible — they cannot both be correct — escalate via
 error mail to your lead before proceeding. Do not silently prefer one over the other.
+
+---
+
+## Execution Contract
+
+Your full operating protocol — communication, mail API, validation, lifecycle, file rules —
+is defined in the **Execution Contract** injected into your system prompt at spawn time.
+
+Read it. Follow it. It tells you HOW to do everything your role prompt says to do.
