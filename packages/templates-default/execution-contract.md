@@ -490,3 +490,14 @@ Every role has defined edge case rules (see individual role templates). This tab
 3. **Authority boundaries are hard.** Agents do NOT act outside their role's authority. When in doubt, ask up.
 4. **The operator is the final authority.** Systemic issues, budget decisions, and scope changes ultimately go to the operator.
 5. **Recovery over restart.** Try to understand and fix before respawning. Blind retries waste budget.
+
+
+## 14. Git Hooks
+
+**All commits and pushes MUST go through git hooks. No exceptions.**
+
+- `--no-verify` is FORBIDDEN on `git commit` and `git push`
+- Pre-commit: eslint --fix + vitest related (staged files)
+- Pre-push: tsc + vitest run + playwright
+- If a hook fails: fix the issue, do not bypass
+- If a hook is broken: fix the hook, do not bypass
