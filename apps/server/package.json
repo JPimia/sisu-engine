@@ -25,7 +25,8 @@
     "@sisu/templates-default": "workspace:*",
     "fastify": "^5.3.3",
     "fastify-plugin": "^5.0.1",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "@sisu/runtime-openclaw": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

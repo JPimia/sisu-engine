@@ -1,3 +1,5 @@
+import type { Assignment } from '@sisu/protocol';
+
 export interface SpawnConfig {
   runId: string;
   role: string;
@@ -8,6 +10,10 @@ export interface SpawnConfig {
   workingDirectory: string;
   systemPrompt: string;
   files?: string[];
+  /** Optional SISU assignment overlay. */
+  assignment?: Assignment;
+  /** SISU server URL for env injection. */
+  apiUrl?: string;
 }
 
 export type AgentStatus = 'spawning' | 'active' | 'completed' | 'failed';

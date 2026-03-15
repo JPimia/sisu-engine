@@ -75,6 +75,9 @@ importers:
       '@sisu/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@sisu/runtime-openclaw':
+        specifier: workspace:*
+        version: link:../../packages/runtime-openclaw
       '@sisu/templates-default':
         specifier: workspace:*
         version: link:../../packages/templates-default
@@ -103,6 +106,28 @@ importers:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.15)
+
+  packages/adapter-mission-control:
+    dependencies:
+      '@sisu/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@sisu/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.0.0
+        version: 2.4.6
+      '@vitest/coverage-v8':
+        specifier: ^2.1.8
+        version: 2.1.9(vitest@2.1.9(@types/node@25.5.0))
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@25.5.0)
 
   packages/core:
     dependencies:
@@ -158,6 +183,31 @@ importers:
         version: 2.1.9(@types/node@25.5.0)
 
   packages/runtime-openclaw:
+    dependencies:
+      '@sisu/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sisu/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@sisu/templates-default':
+        specifier: workspace:*
+        version: link:../templates-default
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.0.0
+        version: 2.4.6
+      '@vitest/coverage-v8':
+        specifier: ^2.1.8
+        version: 2.1.9(vitest@2.1.9(@types/node@25.5.0))
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@25.5.0)
+
+  packages/sdk:
     dependencies:
       '@sisu/protocol':
         specifier: workspace:*

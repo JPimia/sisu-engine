@@ -2,6 +2,7 @@
 import type { ChildProcess } from 'child_process';
 // biome-ignore lint/style/useNodejsImportProtocol: see above
 import { spawn as spawnProcess, spawnSync } from 'child_process';
+import { prepareAssignmentInjection } from './assignment-support.js';
 import type { AgentRuntime } from './interface.js';
 import type { AgentHandle, AgentStatus, LeaseStatus, SpawnConfig } from './types.js';
 
@@ -19,17 +20,28 @@ export class ClaudeCodeRuntime implements AgentRuntime {
   private readonly processes = new Map<string, ProcessEntry>();
 
   async spawn(config: SpawnConfig): Promise<AgentHandle> {
+    const injection = await prepareAssignmentInjection(config);
+
+    const systemPrompt = injection?.systemPrompt ?? config.systemPrompt;
+    const taskWithPrompt = `${systemPrompt}\n\n---\n\nTask: ${config.taskDescription}`;
+
     const args = [
       '--model',
       config.model,
       '--permission-mode',
       'bypassPermissions',
-      config.taskDescription,
+      taskWithPrompt,
     ];
+
+    const env: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      ...(injection?.env ?? {}),
+    };
 
     const child: ChildProcess = spawnProcess('claude', args, {
       cwd: config.workingDirectory,
       stdio: ['pipe', 'pipe', 'pipe'],
+      env,
     });
 
     const entry: ProcessEntry = { process: child, status: 'spawning' };

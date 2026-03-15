@@ -68,8 +68,8 @@ describe('ClaudeCodeRuntime', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'claude',
-        ['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions', 'Do the thing'],
-        { cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'] },
+        expect.arrayContaining(['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions']),
+        expect.objectContaining({ cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'] }),
       );
     });
 

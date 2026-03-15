@@ -2,6 +2,7 @@
 import type { ChildProcess } from 'child_process';
 // biome-ignore lint/style/useNodejsImportProtocol: see above
 import { spawn as spawnProcess, spawnSync } from 'child_process';
+import { prepareAssignmentInjection } from './assignment-support.js';
 import type { AgentRuntime } from './interface.js';
 import type { AgentHandle, AgentStatus, LeaseStatus, SpawnConfig } from './types.js';
 
@@ -19,11 +20,23 @@ export class CodexRuntime implements AgentRuntime {
   private readonly processes = new Map<string, ProcessEntry>();
 
   async spawn(config: SpawnConfig): Promise<AgentHandle> {
-    const args = ['--full-auto', config.taskDescription];
+    const injection = await prepareAssignmentInjection(config);
+
+    const taskDescription = injection
+      ? `${injection.systemPrompt}\n\n---\n\nTask: ${config.taskDescription}`
+      : config.taskDescription;
+
+    const args = ['--full-auto', taskDescription];
+
+    const env: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      ...(injection?.env ?? {}),
+    };
 
     const child: ChildProcess = spawnProcess('codex', args, {
       cwd: config.workingDirectory,
       stdio: ['pipe', 'pipe', 'pipe'],
+      env,
     });
 
     const entry: ProcessEntry = { process: child, status: 'spawning' };

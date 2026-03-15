@@ -1,8 +1,5 @@
 /**
- * @sisu/core — Assignment overlay system.
- *
- * Provides generation, validation, enforcement, and serialization
- * of sisu.assignment.v1 overlay files.
+ * @sisu/core - Assignment overlay system.
  */
 export {
   createBuilderAssignment,
@@ -40,3 +37,14 @@ export type {
   LeadAssignmentInput,
   AssignmentInput,
 } from './types.js';
+
+export {
+  createWorktree,
+  removeWorktree,
+  listWorktrees,
+} from './worktree.js';
+
+export {
+  setupAssignmentDir,
+  writeAssignment,
+} from './setup.js';

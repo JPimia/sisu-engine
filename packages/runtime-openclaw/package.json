@@ -1,7 +1,7 @@
 {
   "name": "@sisu/runtime-openclaw",
   "version": "0.1.0",
-  "description": "Pluggable runtime adapter layer for SISU — Claude Code, Codex, and more",
+  "description": "Pluggable runtime adapter layer for SISU - Claude Code, Codex, and more",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@sisu/protocol": "workspace:*"
+    "@sisu/core": "workspace:*",
+    "@sisu/protocol": "workspace:*",
+    "@sisu/templates-default": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
