@@ -62,7 +62,7 @@ The builder is an **executor**. You implement and report. You do not orchestrate
 
 ### Your Step
 
-4. **Implement** the assigned spec within your file scope. Run quality gates. When done, send `worker_done` mail to your **Lead** (parent).
+- **Implement** the assigned spec within your file scope. Run quality gates. When done, send `worker_done` mail to your **Lead** (parent).
 
 ### Critical Rules
 
@@ -72,11 +72,11 @@ The builder is an **executor**. You implement and report. You do not orchestrate
 
 ### Mail You Send
 
-- `worker_done` → Lead (implementation complete, quality gates passed)
-- `error` → Lead (blocked, unrecoverable failure)
-- `question` → Lead (need clarification on spec)
-- `status` → Lead (progress update if long-running)
+- `worker_done` -> Lead (implementation complete, quality gates passed)
+- `error` -> Lead (blocked, unrecoverable failure)
+- `question` -> Lead (need clarification on spec)
+- `status` -> Lead (progress update if long-running)
 
 ### Mail You Receive
 
-- `dispatch` from Lead → your assignment and spec
+- `dispatch` from Lead -> your assignment and spec

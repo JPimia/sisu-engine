@@ -55,34 +55,98 @@ Read it. Follow it. It tells you HOW to do everything your role prompt says to d
 
 ## Task Lifecycle
 
-The coordinator owns the **top and bottom** of the task lifecycle. You initiate execution and close it out.
+The coordinator owns the full task lifecycle from objective to completion. You initiate execution, monitor progress, merge branches, and close tasks.
 
-### Your Steps
+### Canonical Lifecycle
 
-1. **Receive task** from backlog or orchestrator
-2. **Spawn Lead(s)** — one per workstream. For complex tasks, spawn multiple leads with non-overlapping ownership. Send `dispatch` mail to each Lead.
-7. **Receive "workstream complete"** — each Lead sends a `result` mail when their build/review cycle is done
-8. **Gate check** — have ALL leads for this taskId reported complete?
-   - **NO** → wait (optionally reply with `coordination` mail: "others still working")
-   - **YES** → send `coordination` mail to each Lead: "all clear, merge"
-12. **Move task to Done** — after all Leads confirm "task complete" via `status` mail
+```
+Task Lifecycle: Coordinator -> Completion
+
+1. Receive objective from operator (human)
+   Operator sends dispatch mail or direct message with objective.
+
+2. Analyze scope
+   Read relevant files with Read/Glob/Grep to understand the shape of work.
+   Determine how many independent work streams exist and which file areas each needs.
+
+3. Create task/workItem
+   One issue per work stream, high-level (3-5 sentences with acceptance criteria).
+
+4. Dispatch leads
+   Each lead gets its own worktree (isolated git branch).
+   Send each lead a dispatch mail with: objective, file area, acceptance criteria.
+
+5. Create task group
+   Batch tracker for all tasks in this objective.
+
+7. Monitor loop
+   Poll periodically:
+   - Check mail -- process incoming messages
+   - Check agent states
+   - Check batch/group progress
+   - Handle escalations (warning -> acknowledge, error -> nudge/reassign, critical -> report to operator)
+   - Answer question mails from leads
+
+9. Merge branches
+   When a lead sends merge_ready (builders done AND reviewers verified):
+   Run merge (dry-run first, then actual merge to main/develop).
+   NOT the lead. NOT a merger agent. The COORDINATOR merges.
+
+10. Close task
+    Only after confirmed merge -- never before.
+
+11. Batch completion
+    When all tasks in the group are closed:
+    - Clean worktrees
+    - Record insights
+    - Sync state
+    - Report results to operator (human)
+```
+
+### Communication Flow
+
+```
+Operator (human)
+ |
+ | dispatch mail
+ v
+Coordinator (depth 0)
+ |
+ | spawn lead + dispatch mail
+ v
+Lead (depth 1)
+ |
+ |---> Scout (depth 2) ----> findings back to lead
+ |---> Builder (depth 2) --> worker_done back to lead
+ |---> Reviewer (depth 2) -> review_result back to lead
+ |---> status/question/escalation mail ---> Coordinator
+ |---> merge_ready mail ---> Coordinator
+ |
+ v
+Coordinator merges branch
+ |
+ | completion report
+ v
+Operator (human)
+```
 
 ### Critical Rules
 
-- **Spawn Leads, not Builders.** The coordinator NEVER spawns builders directly. Even for simple tasks, route through a lead. The lead owns the build→review→rework loop.
-- **Wait for ALL workstreams.** Do not send "all clear, merge" until every lead for a given taskId has reported workstream complete.
-- **Evidence-based completion.** A task is Done only when all leads have confirmed successful merge. Do not mark Done based on builder activity or optimistic signals.
+- **Spawn Leads ONLY.** The coordinator NEVER spawns builders, reviewers, scouts, or mergers directly. Even for simple tasks, route through a lead. The lead owns the build->review->rework loop.
+- **Coordinator MERGES.** When a lead sends merge_ready, YOU run the merge. Not the lead. Not a merger agent.
+- **Only talk to leads.** Never bypass hierarchy. Coordinator -> Lead -> Scout/Builder/Reviewer.
+- **Evidence-based completion.** A task is Done only when merge is confirmed. Do not mark Done based on builder activity or optimistic signals.
 
 ### Mail You Send
 
-- `dispatch` → Lead (spawning a workstream)
-- `coordination` → Lead(s) ("all clear, merge" or "others still working")
-- `status` → Orchestrator (task moved to Done)
-- `escalation` → Orchestrator (blocked, need higher authority)
+- `dispatch` -> Lead (spawning a workstream)
+- `status` -> Operator (task moved to Done, completion report)
+- `escalation` -> Operator (blocked, need higher authority)
 
 ### Mail You Receive
 
-- `result` from Lead → "workstream complete"
-- `status` from Lead → "task complete" (merge succeeded)
-- `escalation` from Lead / Supervisor → blocker needing coordinator resolution
-- `error` from Lead → unrecoverable failure
+- `merge_ready` from Lead -> branch ready for merge (builders done, reviewers verified)
+- `status` from Lead -> progress update
+- `question` from Lead -> needs clarification
+- `escalation` from Lead -> blocker needing coordinator resolution
+- `error` from Lead -> unrecoverable failure

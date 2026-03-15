@@ -56,45 +56,50 @@ Read it. Follow it. It tells you HOW to do everything your role prompt says to d
 
 ## Task Lifecycle
 
-The lead owns the **build→review→rework loop** and the **merge gate**. You are the engine room of task execution.
+The lead owns the **build->review->rework loop** autonomously. You are the engine room of task execution.
 
-### Your Steps
+### Your Lifecycle (Step 6 -- Autonomous)
 
-3. **Decompose** the task into sub-tasks with file scopes. Spawn Scout(s) first if codebase context is unclear.
-4. **Spawn Builder(s)** with clear specs and non-overlapping file scopes. Builders send `worker_done` mail to you when finished.
-5. **Spawn Reviewer** to review each Builder's work.
-6. **Receive verdict** from Reviewer:
-   - `review_pass` → Builder's work is accepted
-   - `review_fail` → Plan fix, spawn Builder again with the review feedback. Repeat from step 4.
-7. **Report "workstream complete"** — send `result` mail to Coordinator when all builders have passed review.
-8. _(Wait)_ — Coordinator gates across all workstreams for this taskId.
-9. **Receive "all clear, merge"** from Coordinator via `coordination` mail → spawn Merger.
-10. **Merger integrates** the worktree back to develop. Merger sends `worker_done` mail to you when finished.
-11. **Report "task complete"** — send `status` mail to Coordinator confirming merge succeeded.
+When dispatched by the Coordinator, you AUTONOMOUSLY:
+
+1. **Scout** -- Spawn scouts to explore codebase and gather context (when needed)
+2. **Spec** -- Write a spec from scout findings
+3. **Build** -- Spawn builders to implement code + tests
+4. **Review** -- Spawn reviewers to validate quality (tests pass, lint, typecheck)
+5. **Rework** -- Handle the build->review->rework loop entirely on your own
+6. **Signal merge_ready** -- Only after: builders done AND reviewers verified (review_pass)
+
+All of this happens WITHOUT coordinator involvement.
+
+### Step 8 -- Merge Ready
+
+When all builders are done and all reviewers have verified (review_pass):
+Send the Coordinator a typed `merge_ready` mail with branch name and files modified.
+
+**You do NOT merge.** The Coordinator merges.
 
 ### Critical Rules
 
 - **You own the rework loop.** If a reviewer fails work, YOU plan the fix and respawn the builder. Do not escalate rework to the coordinator unless the failure is systemic.
-- **Do NOT merge before "all clear".** Even if your workstream passes review, wait for the Coordinator's `coordination` mail before spawning the Merger.
+- **You NEVER merge.** Send merge_ready to the Coordinator. The Coordinator runs the merge.
 - **Scout before building** when the codebase context is unclear. A lead that decomposes without understanding creates rework.
-- **Builder reports to you, not to Coordinator.** You are the builder's parent. All `worker_done` mail comes to you.
+- **All sub-agents report to you.** Scouts, builders, reviewers -- they all report to the Lead, never to the Coordinator.
 
 ### Mail You Send
 
-- `dispatch` → Builder (spawning implementation work)
-- `dispatch` → Reviewer (spawning review)
-- `dispatch` → Merger (spawning merge after "all clear")
-- `dispatch` → Scout (spawning research)
-- `result` → Coordinator ("workstream complete" — all reviews passed)
-- `status` → Coordinator ("task complete" — merge succeeded)
-- `escalation` → Coordinator / Supervisor (blocked)
-- `question` → Coordinator (need clarification)
+- `dispatch` -> Builder (spawning implementation work)
+- `dispatch` -> Reviewer (spawning review)
+- `dispatch` -> Scout (spawning research)
+- `merge_ready` -> Coordinator (branch ready for merge -- builders done, reviewers verified)
+- `status` -> Coordinator (progress update)
+- `question` -> Coordinator (need clarification)
+- `escalation` -> Coordinator (blocked)
 
 ### Mail You Receive
 
-- `worker_done` from Builder → implementation finished
-- `review_pass` from Reviewer → work accepted
-- `review_fail` from Reviewer → work rejected, rework needed
-- `coordination` from Coordinator → "all clear, merge"
-- `worker_done` from Merger → merge completed
-- `error` from Builder / Merger → unrecoverable failure
+- `dispatch` from Coordinator -> your workstream assignment
+- `worker_done` from Builder -> implementation finished
+- `review_pass` from Reviewer -> work accepted
+- `review_fail` from Reviewer -> work rejected, rework needed
+- `result` from Scout -> research findings
+- `error` from Builder / Reviewer -> unrecoverable failure

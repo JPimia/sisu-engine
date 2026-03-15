@@ -350,57 +350,116 @@ All endpoints are under `{SISU_API_URL}` (e.g. `http://localhost:4000/v1`).
 Every task follows this canonical lifecycle. All roles must understand where they fit.
 
 ```
-TASK LIFECYCLE (single taskId):
+Task Lifecycle: Coordinator -> Completion
 
-1.  Coordinator receives task in backlog
-2.  Coordinator spawns Lead(s) — one per workstream if task is complex
-3.  Lead decomposes → spawns Builder(s) with file scope
-4.  Builder implements → sends worker_done mail to Lead
-5.  Lead spawns Reviewer to review Builder's work
-6.  Reviewer sends review_pass or review_fail to Lead
-    - If FAIL: Lead plans fix → spawns Builder again → repeat from step 4
-    - If PASS: continue
-7.  Lead sends "workstream complete" (result mail) to Coordinator
-8.  Coordinator checks: have ALL leads for this taskId finished?
-    - If NO: waits (or mails back "others still working")
-    - If YES: mails Lead "all clear, merge" (coordination mail)
-9.  Lead spawns Merger to integrate the worktree back to develop
-10. Merger resolves conflicts, validates, pushes → reports worker_done to Lead
-11. Lead sends "task complete" (status mail) to Coordinator
-12. Coordinator moves task to Done
+1. Receive objective from operator (human)
+   Operator sends dispatch mail or direct message with objective.
+
+2. Analyze scope (Coordinator)
+   Coordinator reads relevant files to understand the shape of work.
+   Determines how many independent work streams exist and which file areas each needs.
+
+3. Create task/workItem
+   One issue per work stream, high-level (3-5 sentences with acceptance criteria).
+
+4. Dispatch leads
+   Each lead gets its own worktree (isolated git branch).
+   Coordinator sends each lead a dispatch mail with: objective, file area, acceptance criteria.
+
+5. Create task group
+   Batch tracker for all tasks in this objective.
+
+6. Lead takes over internally (depth 1 -> depth 2)
+   The lead AUTONOMOUSLY:
+   - Spawns scouts to explore codebase and gather context
+   - Writes a spec from scout findings
+   - Spawns builders to implement code + tests
+   - Spawns reviewers to validate quality (tests pass, lint, typecheck)
+   - Handles the build->review->rework loop entirely on its own
+   - All of this happens WITHOUT coordinator involvement
+
+7. Monitor loop (Coordinator)
+   Coordinator polls periodically:
+   - Check mail -- process incoming messages
+   - Check agent states
+   - Check batch/group progress
+   - Handle escalations (warning -> acknowledge, error -> nudge/reassign, critical -> report to operator)
+   - Answer question mails from leads
+
+8. Lead sends merge_ready
+   Only after: builders done AND reviewers verified (review_pass).
+   Lead sends Coordinator a typed merge_ready mail with branch name and files modified.
+
+9. Coordinator merges
+   Coordinator runs merge (dry-run first, then actual merge to main/develop).
+   NOT the lead. NOT a merger agent. The COORDINATOR merges.
+
+10. Close task
+    Only after confirmed merge -- never before.
+
+11. Batch completion
+    When all tasks in the group are closed, Coordinator:
+    - Cleans worktrees
+    - Records insights
+    - Syncs state
+    - Reports results to operator (human)
+```
+
+### Communication Flow
+
+```
+Operator (human)
+ |
+ | dispatch mail
+ v
+Coordinator (depth 0)
+ |
+ | spawn lead + dispatch mail
+ v
+Lead (depth 1)
+ |
+ |---> Scout (depth 2) ----> findings back to lead
+ |---> Builder (depth 2) --> worker_done back to lead
+ |---> Reviewer (depth 2) -> review_result back to lead
+ |---> status/question/escalation mail ---> Coordinator
+ |---> merge_ready mail ---> Coordinator
+ |
+ v
+Coordinator merges branch
+ |
+ | completion report
+ v
+Operator (human)
 ```
 
 ### Role Responsibilities in the Lifecycle
 
 | Role | Steps | Reports To |
 |------|-------|------------|
-| **Coordinator** | 1, 2, 8, 12 | Orchestrator |
-| **Lead** | 3, 4, 5, 6, 7, 9, 10, 11 | Coordinator |
-| **Builder** | 4 | Lead (parent) |
-| **Reviewer** | 5, 6 | Lead (parent) |
-| **Merger** | 9, 10 | Lead (parent) |
-| **Scout** | Pre-3 (research) | Lead (parent) |
-| **Monitor** | Observes all steps | Supervisor / Coordinator / Orchestrator |
+| **Coordinator** | 1-5, 7, 9-11 | Operator |
+| **Lead** | 6, 8 | Coordinator |
+| **Builder** | (within step 6) | Lead (parent) |
+| **Reviewer** | (within step 6) | Lead (parent) |
+| **Scout** | (within step 6) | Lead (parent) |
+| **Merger** | Fallback only | Lead (parent) |
+| **Monitor** | Observes all steps | Coordinator / Operator |
+
+### Key Rules
+
+- **Coordinator ONLY spawns leads.** Never bypasses hierarchy to spawn builders/reviewers/scouts/mergers.
+- **Coordinator MERGES.** Not leads. Not merger agents. Merger agents are a fallback tool for leads when conflicts arise.
+- **Leads are autonomous.** The build->review->rework loop happens entirely within the lead's authority, without coordinator involvement.
+- **Builders, reviewers, scouts report to Lead.** Never to Coordinator.
+- **No role may skip steps.** The lifecycle is sequential within each workstream.
 
 ### Mail Flow Summary
 
 | Step | Sender | Mail Type | Recipient | Content |
 |------|--------|-----------|-----------|---------|
-| 2 | Coordinator | `dispatch` | Lead | Workstream assignment |
-| 4 | Builder | `worker_done` | Lead | Implementation complete |
-| 5 | Lead | `dispatch` | Reviewer | Review assignment |
+| 4 | Coordinator | `dispatch` | Lead | Workstream assignment |
+| 6 | Builder | `worker_done` | Lead | Implementation complete |
+| 6 | Lead | `dispatch` | Reviewer | Review assignment |
 | 6 | Reviewer | `review_pass` / `review_fail` | Lead | Verdict with details |
-| 7 | Lead | `result` | Coordinator | "workstream complete" |
-| 8 | Coordinator | `coordination` | Lead(s) | "all clear, merge" |
-| 9 | Lead | `dispatch` | Merger | Merge assignment |
-| 10 | Merger | `worker_done` | Lead | Merge complete |
-| 11 | Lead | `status` | Coordinator | "task complete" |
-
-### Invariants
-
-- **Builders NEVER report to Coordinator.** Always to their Lead (parent).
-- **Reviewers NEVER report to Coordinator.** Always to their Lead (parent).
-- **Mergers NEVER report to Coordinator.** Always to their Lead (parent).
-- **Coordinator NEVER spawns Builders directly.** Always through a Lead.
-- **Merge NEVER happens before "all clear".** The Coordinator gates this.
-- **No role may skip steps.** The lifecycle is sequential within each workstream.
+| 8 | Lead | `merge_ready` | Coordinator | Branch ready for merge |
+| 9 | Coordinator | merges branch | -- | Direct git operation |
+| 10 | Coordinator | closes task | -- | After confirmed merge |

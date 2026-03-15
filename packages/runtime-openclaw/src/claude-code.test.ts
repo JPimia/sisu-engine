@@ -10,10 +10,29 @@ vi.mock('node:child_process', () => {
   return { spawn: mockSpawn, spawnSync: mockSpawnSync };
 });
 
+// Mock node:fs for existsSync
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+}));
+
+// Mock node:os for homedir
+vi.mock('node:os', () => ({
+  homedir: vi.fn(() => '/home/testuser'),
+}));
+
 const { spawn: mockSpawn, spawnSync: mockSpawnSync } = await import('node:child_process');
+const { existsSync: mockExistsSync } = await import('node:fs');
+
+const RESOLVED_CLAUDE = '/home/testuser/.bun/bin/claude';
+const EXPECTED_ENV = expect.objectContaining({
+  BUN_INSTALL: '/home/testuser/.bun',
+  CLAUDE_NO_CHROME: '1',
+});
 
 type MockProcess = EventEmitter & {
   stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> } | null;
+  stdout: { on: ReturnType<typeof vi.fn> } | null;
+  stderr: { on: ReturnType<typeof vi.fn> } | null;
   pid: number;
   kill: ReturnType<typeof vi.fn>;
 };
@@ -36,6 +55,8 @@ function makeMockProcess(): MockProcess {
   const proc = new EventEmitter();
   const mockProc = proc as unknown as MockProcess;
   mockProc.stdin = { write: vi.fn(), end: vi.fn() };
+  mockProc.stdout = { on: vi.fn() };
+  mockProc.stderr = { on: vi.fn() };
   mockProc.pid = 12345;
   mockProc.kill = vi.fn();
   return mockProc;
@@ -49,6 +70,7 @@ describe('ClaudeCodeRuntime', () => {
     runtime = new ClaudeCodeRuntime();
     mockProcess = makeMockProcess();
     vi.mocked(mockSpawn).mockReturnValue(mockProcess as never);
+    vi.mocked(mockExistsSync).mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -67,17 +89,47 @@ describe('ClaudeCodeRuntime', () => {
       await runtime.spawn(config);
 
       expect(mockSpawn).toHaveBeenCalledWith(
+<<<<<<< HEAD
         'claude',
         expect.arrayContaining(['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions']),
         expect.objectContaining({ cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'] }),
+=======
+        RESOLVED_CLAUDE,
+        ['--model', 'claude-sonnet-4-6', '--permission-mode', 'bypassPermissions', '-p', 'Do the thing'],
+        { cwd: '/tmp', stdio: ['pipe', 'pipe', 'pipe'], env: EXPECTED_ENV },
+>>>>>>> overstory/builder-selector-fix/sisu-2d2f
       );
     });
 
-    it('closes stdin immediately', async () => {
+    it('falls back to claude binary when bun path not found', async () => {
+      vi.mocked(mockExistsSync).mockReturnValue(false);
       const config = makeConfig();
       await runtime.spawn(config);
 
-      expect(mockProcess.stdin?.end).toHaveBeenCalled();
+      expect(mockSpawn).toHaveBeenCalledWith(
+        'claude',
+        expect.any(Array),
+        expect.any(Object),
+      );
+    });
+
+    it('sets BUN_INSTALL, PATH, and CLAUDE_NO_CHROME in spawn env', async () => {
+      const config = makeConfig();
+      await runtime.spawn(config);
+
+      const spawnCall = vi.mocked(mockSpawn).mock.calls[0]!;
+      const opts = spawnCall[2] as { env: Record<string, string> };
+      expect(opts.env['BUN_INSTALL']).toBe('/home/testuser/.bun');
+      expect(opts.env['CLAUDE_NO_CHROME']).toBe('1');
+      expect(opts.env['PATH']).toContain('/home/testuser/.bun/bin');
+    });
+
+    it('attaches data listeners to stdout and stderr', async () => {
+      const config = makeConfig();
+      await runtime.spawn(config);
+
+      expect(mockProcess.stdout?.on).toHaveBeenCalledWith('data', expect.any(Function));
+      expect(mockProcess.stderr?.on).toHaveBeenCalledWith('data', expect.any(Function));
     });
 
     it('returns handle with runId, pid and spawning status', async () => {
@@ -173,18 +225,25 @@ describe('ClaudeCodeRuntime', () => {
   });
 
   describe('isAvailable', () => {
-    it('returns true when which claude succeeds', async () => {
+    it('returns true when bun claude binary exists', async () => {
+      vi.mocked(mockExistsSync).mockReturnValue(true);
+      expect(await runtime.isAvailable()).toBe(true);
+    });
+
+    it('returns true when which claude succeeds and bun path missing', async () => {
+      vi.mocked(mockExistsSync).mockReturnValue(false);
       vi.mocked(mockSpawnSync).mockReturnValue({ status: 0 } as never);
       expect(await runtime.isAvailable()).toBe(true);
     });
 
-    it('returns false when which claude fails', async () => {
+    it('returns false when bun path missing and which claude fails', async () => {
+      vi.mocked(mockExistsSync).mockReturnValue(false);
       vi.mocked(mockSpawnSync).mockReturnValue({ status: 1 } as never);
       expect(await runtime.isAvailable()).toBe(false);
     });
 
     it('returns false on exception', async () => {
-      vi.mocked(mockSpawnSync).mockImplementation(() => {
+      vi.mocked(mockExistsSync).mockImplementation(() => {
         throw new Error('not found');
       });
       expect(await runtime.isAvailable()).toBe(false);

@@ -10,7 +10,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Top-level strategic coordinator. Owns the overall mission, decomposes goals, and delegates to coordinators.',
     modelTier: 'strategic',
-    modelPreference: 'claude-opus-4-6',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: ['coordinator', 'supervisor', 'monitor'],
     access: { workItems: 'admin', plans: 'admin', mail: 'admin', leases: 'read' },
     maxConcurrency: 1,
@@ -21,8 +21,8 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Tactical planner. Receives objectives from orchestrator, selects workflow templates, and dispatches work.',
     modelTier: 'strategic',
-    modelPreference: 'claude-sonnet-4-6',
-    canSpawn: ['supervisor', 'lead', 'scout', 'builder', 'reviewer', 'merger'],
+    modelPreference: 'anthropic/claude-opus-4-6',
+    canSpawn: ['lead'],
     access: { workItems: 'write', plans: 'write', mail: 'write', leases: 'read' },
     maxConcurrency: -1,
   },
@@ -32,7 +32,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Manages a team of builders/reviewers for a single feature or stream. Monitors progress, handles escalations.',
     modelTier: 'execution',
-    modelPreference: 'claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: ['lead', 'builder', 'reviewer', 'merger'],
     access: { workItems: 'write', plans: 'write', mail: 'write', leases: 'read' },
     maxConcurrency: -1,
@@ -43,7 +43,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Senior builder with spawn rights. Coordinates small groups of builders and owns integration.',
     modelTier: 'execution',
-    modelPreference: 'claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: ['builder', 'reviewer'],
     access: { workItems: 'write', plans: 'read', mail: 'write', leases: 'read' },
     maxConcurrency: -1,
@@ -54,7 +54,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Explores the codebase, gathers context, produces research reports. Read-only access. Cannot spawn.',
     modelTier: 'observation',
-    modelPreference: 'claude-haiku-4-5-20251001',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: [],
     access: { workItems: 'read', plans: 'read', mail: 'write', leases: 'read' },
     maxConcurrency: -1,
@@ -65,7 +65,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Implementation specialist. Writes code, runs tests, commits changes. The primary leaf-node worker.',
     modelTier: 'execution',
-    modelPreference: 'claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: [],
     access: { workItems: 'read', plans: 'read', mail: 'write', leases: 'read' },
     maxConcurrency: -1,
@@ -76,7 +76,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Reviews code, checks quality, provides pass/fail verdicts. Cannot modify code directly.',
     modelTier: 'review',
-    modelPreference: 'claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: [],
     access: { workItems: 'read', plans: 'read', mail: 'write', leases: 'read' },
     maxConcurrency: -1,
@@ -87,7 +87,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Handles branch integration — merges worktrees, resolves conflicts, validates builds post-merge.',
     modelTier: 'execution',
-    modelPreference: 'claude-sonnet-4-6',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: [],
     access: { workItems: 'write', plans: 'read', mail: 'write', leases: 'read' },
     maxConcurrency: -1,
@@ -98,7 +98,7 @@ export const BUILT_IN_ROLES: RoleDefinition[] = [
     description:
       'Observes system health, token usage, lease staleness. Escalates anomalies. Read-only observer.',
     modelTier: 'observation',
-    modelPreference: 'claude-haiku-4-5-20251001',
+    modelPreference: 'openai/gpt-5.4',
     canSpawn: [],
     access: { workItems: 'read', plans: 'read', mail: 'write', leases: 'admin' },
     maxConcurrency: 1,
