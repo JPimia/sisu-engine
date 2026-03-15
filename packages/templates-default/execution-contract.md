@@ -342,3 +342,65 @@ All endpoints are under `{SISU_API_URL}` (e.g. `http://localhost:4000/v1`).
 4. **Run validation before reporting done** — no exceptions
 5. **Escalate immediately when blocked** — silence is the worst failure mode
 6. **Exit cleanly** — code 0 on success, non-zero on failure
+
+---
+
+## 12. Task Lifecycle
+
+Every task follows this canonical lifecycle. All roles must understand where they fit.
+
+```
+TASK LIFECYCLE (single taskId):
+
+1.  Coordinator receives task in backlog
+2.  Coordinator spawns Lead(s) — one per workstream if task is complex
+3.  Lead decomposes → spawns Builder(s) with file scope
+4.  Builder implements → sends worker_done mail to Lead
+5.  Lead spawns Reviewer to review Builder's work
+6.  Reviewer sends review_pass or review_fail to Lead
+    - If FAIL: Lead plans fix → spawns Builder again → repeat from step 4
+    - If PASS: continue
+7.  Lead sends "workstream complete" (result mail) to Coordinator
+8.  Coordinator checks: have ALL leads for this taskId finished?
+    - If NO: waits (or mails back "others still working")
+    - If YES: mails Lead "all clear, merge" (coordination mail)
+9.  Lead spawns Merger to integrate the worktree back to develop
+10. Merger resolves conflicts, validates, pushes → reports worker_done to Lead
+11. Lead sends "task complete" (status mail) to Coordinator
+12. Coordinator moves task to Done
+```
+
+### Role Responsibilities in the Lifecycle
+
+| Role | Steps | Reports To |
+|------|-------|------------|
+| **Coordinator** | 1, 2, 8, 12 | Orchestrator |
+| **Lead** | 3, 4, 5, 6, 7, 9, 10, 11 | Coordinator |
+| **Builder** | 4 | Lead (parent) |
+| **Reviewer** | 5, 6 | Lead (parent) |
+| **Merger** | 9, 10 | Lead (parent) |
+| **Scout** | Pre-3 (research) | Lead (parent) |
+| **Monitor** | Observes all steps | Supervisor / Coordinator / Orchestrator |
+
+### Mail Flow Summary
+
+| Step | Sender | Mail Type | Recipient | Content |
+|------|--------|-----------|-----------|---------|
+| 2 | Coordinator | `dispatch` | Lead | Workstream assignment |
+| 4 | Builder | `worker_done` | Lead | Implementation complete |
+| 5 | Lead | `dispatch` | Reviewer | Review assignment |
+| 6 | Reviewer | `review_pass` / `review_fail` | Lead | Verdict with details |
+| 7 | Lead | `result` | Coordinator | "workstream complete" |
+| 8 | Coordinator | `coordination` | Lead(s) | "all clear, merge" |
+| 9 | Lead | `dispatch` | Merger | Merge assignment |
+| 10 | Merger | `worker_done` | Lead | Merge complete |
+| 11 | Lead | `status` | Coordinator | "task complete" |
+
+### Invariants
+
+- **Builders NEVER report to Coordinator.** Always to their Lead (parent).
+- **Reviewers NEVER report to Coordinator.** Always to their Lead (parent).
+- **Mergers NEVER report to Coordinator.** Always to their Lead (parent).
+- **Coordinator NEVER spawns Builders directly.** Always through a Lead.
+- **Merge NEVER happens before "all clear".** The Coordinator gates this.
+- **No role may skip steps.** The lifecycle is sequential within each workstream.
