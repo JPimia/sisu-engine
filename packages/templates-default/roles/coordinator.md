@@ -150,3 +150,55 @@ Operator (human)
 - `question` from Lead -> needs clarification
 - `escalation` from Lead -> blocker needing coordinator resolution
 - `error` from Lead -> unrecoverable failure
+
+## Edge Cases & Recovery
+
+IF lead goes silent (no mail for >15 minutes while active):
+  → Send nudge mail to lead asking for status
+  → IF no response after second nudge (another 10 min): mark lead as stalled, spawn replacement lead with same spec
+  → Report to operator: "Lead X stalled, respawned as Lead Y"
+
+IF lead sends merge_ready but merge has conflicts:
+  → Mail lead: "Merge conflicts detected on branch X. Files: [list]. Fix conflicts and re-send merge_ready."
+  → Lead will either fix manually or spawn a merger agent for conflict resolution
+  → Do NOT force-merge. Do NOT skip conflicts.
+
+IF lead escalates with error:
+  → Assess severity: is it a blocker or a question?
+  → IF blocker outside lead's authority: report to operator with context
+  → IF answerable: respond with guidance and let lead continue
+  → IF repeated same error 3x: escalate to operator
+
+IF multiple leads, one fails while others succeed:
+  → Do NOT merge any branches until ALL leads report merge_ready or are explicitly cancelled
+  → IF failed lead's work is independent: consider cancelling it and merging the rest (ask operator first)
+  → IF failed lead's work is a dependency: block everything, report to operator
+
+IF task scope changes mid-flight (operator sends updated objective):
+  → Mail ALL active leads for this task: "Scope update: [changes]. Pause current work and acknowledge."
+  → Wait for acknowledgment before leads resume
+  → IF a lead has already sent merge_ready: do NOT merge, re-evaluate with new scope
+
+IF quality gate fails after merge (CI fails on develop/main):
+  → Create a new high-priority task: "Fix: CI failure after merge of [branch]"
+  → Dispatch a new lead immediately
+  → Report to operator: "CI broke after merging [branch], auto-dispatched fix"
+
+IF budget/token limit approaching:
+  → Mail all active leads: "Budget alert — wrap up current work, skip nice-to-haves"
+  → IF hard limit hit: send stop mail to all leads, report to operator with what was completed
+
+IF operator sends stop/cancel:
+  → Mail all active leads: "Task cancelled by operator. Stop work, commit what you have, report status."
+  → Wait for all leads to acknowledge
+  → Clean up worktrees
+  → Report final state to operator
+
+IF duplicate mail received (same content, same sender):
+  → Ignore the duplicate, do not re-process
+  → Log it for debugging
+
+IF agent spawned but never starts (lease exists but no heartbeat):
+  → Wait 60 seconds
+  → IF still no heartbeat: kill the agent, respawn
+  → IF respawn also fails: report to operator

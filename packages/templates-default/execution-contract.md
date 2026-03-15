@@ -463,3 +463,30 @@ Operator (human)
 | 8 | Lead | `merge_ready` | Coordinator | Branch ready for merge |
 | 9 | Coordinator | merges branch | -- | Direct git operation |
 | 10 | Coordinator | closes task | -- | After confirmed merge |
+## 13. Edge Cases & Recovery Protocol
+
+Every role has defined edge case rules (see individual role templates). This table summarizes the escalation matrix:
+
+| Situation | Who detects | Who handles | Action |
+|---|---|---|---|
+| Builder fails | Lead | Lead | Retry with adjusted spec, escalate after 3 failures |
+| Review fails | Lead | Lead | New builder with fix instructions, escalate after 3 failures |
+| Lead stalls | Coordinator | Coordinator | Nudge → respawn → report to operator |
+| Merge conflicts | Coordinator | Lead (via mail) | Lead fixes or spawns merger, re-sends merge_ready |
+| Agent never starts | Monitor | Coordinator | Kill + respawn, report if persistent |
+| CI fails after merge | Coordinator | Coordinator | Auto-dispatch fix task, report to operator |
+| Budget limit | Coordinator | All | Wrap up critical path, report what's delivered |
+| Task cancelled | Operator | Coordinator | Stop all agents, clean up, report final state |
+| Scope change | Operator | Coordinator → Leads | Pause, acknowledge, re-plan if needed |
+| Security issue found | Reviewer | Lead → Coordinator | Block merge, escalate |
+| Spec wrong | Reviewer | Lead → Coordinator | Clarify before proceeding |
+| File scope too narrow | Builder | Lead | Builder asks, Lead expands scope |
+| Systemic stall | Monitor | Coordinator | Urgent escalation, check infrastructure |
+
+### Core Principles
+
+1. **No silent failures.** Every agent must report errors explicitly. Idling without communication is forbidden.
+2. **Escalation has a ceiling.** After 3 retries at any level, escalate up. Do not loop forever.
+3. **Authority boundaries are hard.** Agents do NOT act outside their role's authority. When in doubt, ask up.
+4. **The operator is the final authority.** Systemic issues, budget decisions, and scope changes ultimately go to the operator.
+5. **Recovery over restart.** Try to understand and fix before respawning. Blind retries waste budget.

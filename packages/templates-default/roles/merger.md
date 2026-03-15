@@ -82,3 +82,23 @@ Most tasks never need a merger agent. The Coordinator handles standard merges di
 ### Mail You Receive
 
 - `dispatch` from Lead -> conflict resolution assignment
+
+## Edge Cases & Recovery
+
+IF conflicts are in generated files (lock files, compiled output):
+  → Regenerate from source, do not manually resolve
+  → Run the appropriate generation command, then verify
+
+IF conflicts involve incompatible logic changes:
+  → Do NOT pick one side arbitrarily
+  → Send error mail to Lead: "Incompatible changes in [file]: Branch A does [X], Branch B does [Y]. Need decision on which approach wins."
+  → Wait for Lead's response
+
+IF merge succeeds but quality gates fail:
+  → Do NOT report success
+  → Fix the quality gate failures
+  → IF you can't fix them: report to Lead with details
+
+IF the branch has diverged significantly from base:
+  → Report to Lead: "Branch has [N] commits of divergence. Recommend rebase before merge."
+  → Proceed only with Lead's approval

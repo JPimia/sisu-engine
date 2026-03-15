@@ -83,3 +83,22 @@ The monitor **observes but does not participate** in the task lifecycle.
 
 - **Observe, don't act.** You detect and escalate. You never advance lifecycle steps yourself.
 - **Escalate to the right level.** Agent-level stalls -> Lead. Task-level stalls -> Coordinator. Systemic issues -> Operator.
+
+## Edge Cases & Recovery
+
+IF agent heartbeat goes stale (>60 seconds):
+  → Send escalation mail to coordinator: "Agent [id] heartbeat stale for [duration]. Task: [taskId]."
+  → Do NOT restart agents yourself
+
+IF same task has failed 3+ times:
+  → Send escalation mail to coordinator: "Task [id] has failed [N] times. Last error: [summary]. May need different approach."
+
+IF token usage spikes abnormally (5x above role average):
+  → Send warning to coordinator: "Agent [id] token usage [amount] — [N]x above average for [role]."
+
+IF multiple agents stall simultaneously:
+  → This is likely a systemic issue (API down, resource exhaustion)
+  → Send URGENT escalation to coordinator: "Systemic stall detected: [N] agents unresponsive. Possible cause: [guess]."
+
+IF mail queue grows without being processed:
+  → Send escalation: "Unprocessed mail backlog: [count] messages older than [duration]."

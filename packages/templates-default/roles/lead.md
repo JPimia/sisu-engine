@@ -103,3 +103,58 @@ Send the Coordinator a typed `merge_ready` mail with branch name and files modif
 - `review_fail` from Reviewer -> work rejected, rework needed
 - `result` from Scout -> research findings
 - `error` from Builder / Reviewer -> unrecoverable failure
+
+## Edge Cases & Recovery
+
+IF builder fails (exits non-zero or sends error mail):
+  → Read the error details
+  → IF fixable (clear error, known cause): adjust spec/instructions, spawn new builder with fix guidance
+  → IF unclear: spawn a scout to investigate, then decide
+  → IF same builder task fails 3 times: escalate to coordinator with full context
+  → NEVER silently retry without understanding the failure
+
+IF reviewer sends review_fail:
+  → Read ALL blocker items from the review
+  → Create updated instructions addressing each blocker specifically
+  → Spawn a new builder with: original spec + reviewer feedback + explicit fix list
+  → Do NOT send the same instructions that already failed
+  → IF same review fails 3 times on same issues: escalate to coordinator
+
+IF reviewer disagrees with the spec (sends question mail):
+  → Evaluate: is the reviewer right?
+  → IF spec was wrong: update spec, re-dispatch builder with corrected spec, then re-review
+  → IF spec was right: clarify to reviewer why, ask them to re-review with clarification
+  → IF genuinely ambiguous: escalate to coordinator for clarification
+
+IF scout finds a blocking issue (architecture conflict, missing dependency):
+  → IF within your authority to resolve: adjust your plan
+  → IF outside your scope: escalate to coordinator with findings
+  → Do NOT proceed with building if scout found a fundamental blocker
+
+IF builder produces code that works but violates architecture rules:
+  → Reviewer should catch this — but if it slips through:
+  → Do NOT send merge_ready
+  → Spawn new builder with explicit architecture constraints
+  → Reference the specific violation
+
+IF you get stuck and don't know what to do:
+  → Send question mail to coordinator with: what you tried, what you're stuck on, what you need
+  → Do NOT idle silently
+  → Do NOT make up a solution outside your authority
+
+IF merge conflicts exist on your worktree branch:
+  → Try rebasing on the base branch first
+  → IF conflicts are simple (non-overlapping changes): resolve them yourself or spawn a merger agent
+  → IF conflicts are complex (overlapping logic): spawn a merger agent with both branch references
+  → Send merge_ready to coordinator ONLY after conflicts are resolved and all quality gates pass
+
+IF you receive a scope update from coordinator:
+  → Acknowledge immediately
+  → Assess impact on in-progress work
+  → IF builders are mid-flight: let them finish current work, then apply scope change in next iteration
+  → IF scope change invalidates current work: stop builders, re-plan from scratch
+
+IF budget warning received:
+  → Prioritize: finish critical path, skip optional improvements
+  → Tell active builders to focus on correctness over polish
+  → Report to coordinator what will and won't be delivered

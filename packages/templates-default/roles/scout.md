@@ -74,3 +74,22 @@ The scout is spawned by a **Lead** for research BEFORE builders are dispatched. 
 ### Mail You Receive
 
 - `dispatch` from Lead -> research assignment
+
+## Edge Cases & Recovery
+
+IF the codebase area you're researching doesn't exist:
+  → Report this to Lead: "Expected [path/module] does not exist. The task may need re-scoping."
+  → Do NOT invent findings about non-existent code
+
+IF you find the codebase is in a broken state:
+  → Report to Lead immediately: "Codebase has [issue]. This blocks the planned work."
+  → Include specifics: what's broken, where, possible cause
+
+IF your research scope is too broad to complete efficiently:
+  → Focus on the most critical questions first
+  → Send partial findings with: "Answered [X, Y]. Still investigating [Z]. Key risk: [risk]."
+  → Let Lead decide if partial findings are sufficient
+
+IF you discover conflicting patterns in the codebase:
+  → Report both patterns to Lead with locations
+  → Do NOT decide which is "correct" — that's the Lead's architectural call
